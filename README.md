@@ -15,3 +15,19 @@ If you have any requests for features, bugfixes, or comments, please let me know
 
 (Also, the provided DLLs that access the scope belong to Hantek, not me. They are provided simply for ease of access and
 are probably NOT covered by the GPL!)
+
+Note To Self:
+The version here isn't completed, but I have a local version with everything implemented.
+
+Note to whomever may be using this:
+I've noticed that while you have more control here, this sometimes runs a little slower than with the included scope program.
+I need to figure how to speed up access. Part of the problem, I suspect, is crappy drivers, and crappy firmware (you get what
+you pay for I guess). I am looking into hacking some drivers together, and maybe that will fix some of the functionality problems
+like calibration not working, and provide a speed increase in the API.
+
+As far as firmware goes, it looks as though the internal firmware is reasonably common. It may be feasible to rewrite this,
+and get better performance/sampling speed increase? Also, the roughly +/-10mV noise on the scope (according to Aurora at eevblog.com) 
+may be due to a DC/DC converter on the board. This might be work replacing if noise can be dropped by any significant factor.
+
+For additional (interesting) details, the inquisitive reader is suggested to read:
+http://www.eevblog.com/forum/testgear/hantek-6022be-20mhz-usb-dso/
