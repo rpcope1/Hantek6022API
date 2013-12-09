@@ -16,9 +16,6 @@ If you have any requests for features, bugfixes, or comments, please let me know
 (Also, the provided DLLs that access the scope belong to Hantek, not me. They are provided simply for ease of access and
 are probably NOT covered by the GPL!)
 
-Note To Self:
-The version here isn't completed, but I have a local version with everything implemented.
-
 Note to whomever may be using this:
 I've noticed that while you have more control here, this sometimes runs a little slower than with the included scope program.
 I need to figure how to speed up access. Part of the problem, I suspect, is crappy drivers, and crappy firmware (you get what
