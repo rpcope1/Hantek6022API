@@ -80,6 +80,21 @@ class oscilloscope():
 			corresponding timing division."""
 		return self.sampleRateIndicies
 	
+	def getTriggerSweepsDict(self):
+		"""Takes no arguments, returns the dictionary that relates the trigger sweep index to its
+			corresponding setting."""
+		return self.validTriggerSweeps
+		
+	def getTriggerSourcesDict(self):
+		"""Takes no arguments, returns the dictionary that relates the trigger source index to its
+			corresponding setting."""
+		return self.validTriggerSources
+		
+	def getTriggerSlopesDict(self):
+		"""Takes no arguments, returns the dictionary that relates the trigger slope index to its
+			corresponding setting."""
+		return self.validTriggerSlopes
+	
 	def setVoltageDivision(self, channelNum, voltIndex):
 		"""Takes two arguments, first the channel number, second the voltage index value.
 			Returns true if arguments were valid and command returned successfully, false otherwise."""
@@ -119,7 +134,7 @@ class oscilloscope():
 		Returns an array of analog values read from the scope."""
 		pointDiv = scale/scalePoints
 		out = [0.0 for i in inputData]
-		inputData = [int(i) for i in inputData]
+		#inputData = [i.value for i in inputData]
 		for i in xrange(0, len(inputData)):
 			out[i] = inputData[i] * pointDiv
 		return out
@@ -154,17 +169,52 @@ class oscilloscope():
 			if retval == -1:
 				return None
 			else:
-				return (self.convertReadData(dataCH1, self.currentVoltDiv[1]), self.convertReadData(dataCH2, self.currentVoltDiv[2]), [ i/self.currentSampleRate for i in range(0, dataPoints)], t_index)
+				return (self.convertReadData(dataCH1, self.currentVoltDiv[1]), self.convertReadData(dataCH2, self.currentVoltDiv[2]), [ i/1e6 for i in range(0, dataPoints)], t_index)
 				
 	def setupDsoCalLevel(self):
 		"""This function takes no arguments, and returns true on success, false on failure.
 			This is used to poll the oscilloscope's calibration level."""
-		self.calData = (c_short * 32)()
+		if self.calData == None:
+			self.calData = (c_short * 32)()
 		retval = self.marchdll.dsoGetCalLevel(self.scopeid, byref(self.calData), c_short(32))
 		if retval == 0:
 			return True
 		else:
+			print "setupDsoCalLevel retval: ", retval
 			return False
+			
+	def calibrateDso(self):
+		"""This function takes no arguments, and returns true on success, false on failure.
+			This is used to set the oscilloscope's calibration level."""
+		if self.calData == None:
+			self.calData = (c_short * 32)()
+		retval = self.marchdll.dsoCalibrate(self.scopeid, self.currentSampleRateIndex, 
+											self.currentVoltIndex[1], self.currentVoltIndex[2],
+											byref(self.calData))
+		if retval == 0:
+			return True
+		else:
+			return False
+			
+	def getCalibrationData(self):
+		"""This function takes no arguments, and returns the current state of calibration data.
+			If None is returned, no calibration settings were loaded. This could be called after the calibrateDso function."""
+		return self.calData
+		
+	def setDsoCalibration(self, calData):
+		"""This function takes one argument and returns True on success, False on failure.
+			The argument is a previous calibration to be loaded to the device. This function sets
+			the calibration level."""
+		if type(calData) is not type((c_short*32)()):
+			return False
+		else:
+			self.calData = calData
+			retval = self.marchdll.dsoSetCalLevel(self.scopeid, byref(self.calData), 32)
+			if retval == 0:
+				return True
+			else:
+				return False
+											
 												
 		
 #Run these unit tests to make sure the API works correctly.				
@@ -187,6 +237,9 @@ if __name__ == "__main__":
 	print scope.setSamplingRate(25), "<-should return true."
 	print scope.readDataFromScope(), "<-should return None."
 	print scope.setupDsoCalLevel(), "<-should return True."
+	calLevel = scope.getCalibrationData()
+	print "Loaded calibration level:", [int(i) for i in calLevel]
+	print scope.setDsoCalibration(calLevel), "<-should return True."
 	print "\n------------------\n\tData Tests\t\n------------------\n"
 	print "\tVolt Div == 2.0 V, Sample Rate = 500 KSa/s\n"
 	print "------------------\n"
