@@ -27,4 +27,6 @@ and get better performance/sampling speed increase? Also, the roughly +/-10mV no
 may be due to a DC/DC converter on the board. This might be work replacing if noise can be dropped by any significant factor.
 
 For additional (interesting) details, the inquisitive reader is suggested to read:
-http://www.eevblog.com/forum/testgear/hantek-6022be-20mhz-usb-dso/
+http://www.eevblog.com/forum/testgear/hantek-6022be-20mhz-usb-dso/ 
+
+UPDATE: If you're interested in contributing and updating this repo, I'd be glad to have help maintaining it. I do accept pull requests.
