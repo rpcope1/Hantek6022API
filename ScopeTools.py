@@ -1,6 +1,11 @@
 from ctypes import *
 import os
 
+# No Linux support...yet
+if os.name != 'nt':
+    raise StandardError('Hantek scope library only currently supports windows!')
+
+
 # Set the directory for your HantekScope DLL here.
 marchdll_file = os.path.join("hantek_sdk", "HTMarch.dll")
 
