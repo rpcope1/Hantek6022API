@@ -34,7 +34,7 @@ class Oscilloscope(object):
             self.current_volt_div[chan] = self.volt_indicies[init_volt][1]
 
         self.sample_rate_indicies = {11: ("16 MSa/s", 16e6), 12: ("8 MSa/s", 8e6), 13: ("4 MSa/s", 4e6),
-                                   25: ("500 KSa/s", 500e3), 26: ("200 KSa/s", 200e3), 27: ("100 KSa/s", 100e3)}
+                                     25: ("500 KSa/s", 500e3), 26: ("200 KSa/s", 200e3), 27: ("100 KSa/s", 100e3)}
         for index in range(0, 11):
             self.sample_rate_indicies[index] = ("48 MSa/s", 48e6)  # All values 0-10 are set to this.
         for index in range(14, 25):
@@ -159,14 +159,14 @@ class Oscilloscope(object):
             Takes input from scope data, and the scaling factor, with the optional number of points in the
             scaling division. Returns an array of analog values read from the scope.
         """
-        # point_div = scale / scale_points
-        # out = [0.0 for i in input_data]
-        # inputData = [i.value for i in inputData]
-        # for i in xrange(0, len(input_data)):
-        #     out[i] = input_data[i] * point_div
+        point_div = scale / scale_points
+        out = [0.0 for _ in input_data]
+        input_data = [j.value for j in input_data]
+        for j in xrange(0, len(input_data)):
+            out[j] = input_data[j] * point_div
         return input_data
 
-    def read_data_from_scope(self, data_points=500, display_points=500):
+    def read_data_from_scope(self, data_points=500, display_points=500, raw_data=False):
         """
             Takes two optional arguments, number of data points and number of display point
             to grab. Returns a tuple with channel 1 data, channel 2 data, time since capture init, and a trigger
@@ -198,6 +198,8 @@ class Oscilloscope(object):
                                                    self.current_dvalue_mode)
             if retval == -1:
                 return None
+            elif raw_data:
+                return data_ch1, data_ch2, [j / 1e6 for j in range(0, data_points)], t_index
             else:
                 return (self.convert_read_data(data_ch1, self.current_volt_div[1]),
                         self.convert_read_data(data_ch2, self.current_volt_div[2]),
@@ -256,7 +258,7 @@ class Oscilloscope(object):
                 return False
 
 
-# Run these unit tests to make sure the API works correctly.
+# TODO: Make this into real unit tests.
 if __name__ == "__main__":
     scope = Oscilloscope()
     print "Running Unit tests..."
@@ -273,7 +275,7 @@ if __name__ == "__main__":
     print scope.set_voltage_division(100, 200), "<-should return false."
     print scope.set_voltage_division(1, 6), "<-should return true."
     print scope.set_sampling_rate(500), "<-should return false."
-    samplerate = 1000 * 1000;
+    samplerate = 1000 * 1000
     print scope.set_sampling_rate(24), "<-should return true."
     print scope.read_data_from_scope(), "<-should return None."
     print scope.setup_dso_cal_level(), "<-should return True."
@@ -283,28 +285,28 @@ if __name__ == "__main__":
     print "\n------------------\n\tData Tests\t\n------------------\n"
     print "\tVolt Div == 2.0 V, Sample Rate = 1000 KSa/s\n"
     print "------------------\n"
-    data=[];
-    total = 0;
-    for x in range(0,10):
+    data = []
+    total = 0
+    for x in range(0, 10):
         print x
-        data.append(scope.readDataFromScope(1047550)[0]);
+        data.append(scope.read_data_from_scope(1047550, raw_data=True)[0])
         total += len(data[x])
 
     filename = "test.wav"
-    file = open(filename, "wb")
-    file.write("RIFF");
-    file.write(pack("<L", 44 + total - 8))
-    file.write("WAVE");
-    file.write("fmt \x10\x00\x00\x00\x01\x00\x01\x00");
-    file.write(pack("<L", samplerate));
-    file.write(pack("<L", samplerate));
-    file.write("\x01\x00\x08\x00");
-    file.write("data");
-    file.write(pack("<L", total))
+    wav_file = open(filename, "wb")
+    wav_file.write("RIFF")
+    wav_file.write(pack("<L", 44 + total - 8))
+    wav_file.write("WAVE")
+    wav_file.write("fmt \x10\x00\x00\x00\x01\x00\x01\x00")
+    wav_file.write(pack("<L", samplerate))
+    wav_file.write(pack("<L", samplerate))
+    wav_file.write("\x01\x00\x08\x00")
+    wav_file.write("data")
+    wav_file.write(pack("<L", total))
     raw = StringIO.StringIO()
     for x in data:
         for v in x:
-            raw.write(pack("<B", v&0xff))
-    file.write(raw.getvalue())
+            raw.write(pack("<B", v & 0xff))
+    wav_file.write(raw.getvalue())
     raw.close()
-    file.close()
+    wav_file.close()
