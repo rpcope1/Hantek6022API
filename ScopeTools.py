@@ -1,5 +1,9 @@
+#!/usr/bin/python
+
 from ctypes import *
 import os
+from struct import pack
+import StringIO
 
 # No Linux support...yet
 if os.name != 'nt':
@@ -155,12 +159,12 @@ class Oscilloscope(object):
             Takes input from scope data, and the scaling factor, with the optional number of points in the
             scaling division. Returns an array of analog values read from the scope.
         """
-        point_div = scale / scale_points
-        out = [0.0 for i in input_data]
+        # point_div = scale / scale_points
+        # out = [0.0 for i in input_data]
         # inputData = [i.value for i in inputData]
-        for i in xrange(0, len(input_data)):
-            out[i] = input_data[i] * point_div
-        return out
+        # for i in xrange(0, len(input_data)):
+        #     out[i] = input_data[i] * point_div
+        return input_data
 
     def read_data_from_scope(self, data_points=500, display_points=500):
         """
@@ -269,23 +273,38 @@ if __name__ == "__main__":
     print scope.set_voltage_division(100, 200), "<-should return false."
     print scope.set_voltage_division(1, 6), "<-should return true."
     print scope.set_sampling_rate(500), "<-should return false."
-    print scope.set_sampling_rate(25), "<-should return true."
+    samplerate = 1000 * 1000;
+    print scope.set_sampling_rate(24), "<-should return true."
     print scope.read_data_from_scope(), "<-should return None."
     print scope.setup_dso_cal_level(), "<-should return True."
     calLevel = scope.get_calibration_data()
     print "Loaded calibration level:", [int(i) for i in calLevel]
     print scope.set_dso_calibration(calLevel), "<-should return True."
     print "\n------------------\n\tData Tests\t\n------------------\n"
-    print "\tVolt Div == 2.0 V, Sample Rate = 500 KSa/s\n"
+    print "\tVolt Div == 2.0 V, Sample Rate = 1000 KSa/s\n"
     print "------------------\n"
-    data = scope.read_data_from_scope()
-    for entry in data:
-        print entry, "\n------------------"
-    print "\n------------------\n"
-    print "\tVolt Div == 0.5 V, Sample Rate = 200 KSa/s\n"
-    print "------------------\n"
-    scope.set_sampling_rate(26)
-    scope.set_voltage_division(1, 4)
-    data = scope.read_data_from_scope()
-    for entry in data:
-        print entry, "\n------------------"
+    data=[];
+    total = 0;
+    for x in range(0,10):
+        print x
+        data.append(scope.readDataFromScope(1047550)[0]);
+        total += len(data[x])
+
+    filename = "test.wav"
+    file = open(filename, "wb")
+    file.write("RIFF");
+    file.write(pack("<L", 44 + total - 8))
+    file.write("WAVE");
+    file.write("fmt \x10\x00\x00\x00\x01\x00\x01\x00");
+    file.write(pack("<L", samplerate));
+    file.write(pack("<L", samplerate));
+    file.write("\x01\x00\x08\x00");
+    file.write("data");
+    file.write(pack("<L", total))
+    raw = StringIO.StringIO()
+    for x in data:
+        for v in x:
+            raw.write(pack("<B", v&0xff))
+    file.write(raw.getvalue())
+    raw.close()
+    file.close()
