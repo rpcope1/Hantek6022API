@@ -1,6 +1,6 @@
 # Hantek6022API (Version 0.0.2)
 
-![Reference Oscillator Trace](https://raw.githubusercontent.com/rpcope1/Hantek6022API/master/HT6022BuiltInOscillator.png)
+![Reference Oscillator Trace](https://raw.githubusercontent.com/rpcope1/Hantek6022API/master/HT6022BEBuiltInOscillator.png)
 
 Hantek 6022BE Python API for Windows. This is a wrapper for Python via ctypes for Hantek's SDK for the ultra-cheap, 
 reasonably usable (and ultra-hackable) 6022BE DSO. I was tired of using the silly Chinese software 
