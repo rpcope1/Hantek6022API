@@ -23,7 +23,6 @@ class BasicTests(TestCase):
         assert scope.setup()
         assert scope.open_handle()
         cal_values = scope.get_calibration_values()
-        print map(ord, cal_values)
         assert cal_values
         assert scope.close_handle()
 
