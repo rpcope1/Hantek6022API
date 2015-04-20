@@ -68,7 +68,7 @@ class BasicTests(TestCase):
         assert scope.close_handle()
 
     def test_data_scaling(self):
-        scale_factor = 0x0a
+        scale_factor = 0x01
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()

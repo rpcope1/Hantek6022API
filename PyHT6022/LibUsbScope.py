@@ -31,34 +31,14 @@ class Oscilloscope(object):
     SET_CH2_VR_VALUE = 0x00
     SET_CH2_VR_INDEX = 0x00
 
-    SAMPLE_RATES = {0: ("48 MS/s", 48e6),
-                    1: ("48 MS/s", 48e6),
-                    2: ("48 MS/s", 48e6),
-                    3: ("48 MS/s", 48e6),
-                    4: ("48 MS/s", 48e6),
-                    5: ("48 MS/s", 48e6),
-                    6: ("48 MS/s", 48e6),
-                    7: ("48 MS/s", 48e6),
-                    8: ("48 MS/s", 48e6),
-                    9: ("48 MS/s", 48e6),
-                    10: ("48 MS/s", 48e6),
-                    11: ("16 MSa/s", 16e6),
-                    12: ("8 MSa/s", 8e6),
-                    13: ("4 MSa/s", 4e6),
-                    14: ("1 MS/s", 1e6),
-                    15: ("1 MS/s", 1e6),
-                    16: ("1 MS/s", 1e6),
-                    17: ("1 MS/s", 1e6),
-                    18: ("1 MS/s", 1e6),
-                    19: ("1 MS/s", 1e6),
-                    20: ("1 MS/s", 1e6),
-                    21: ("1 MS/s", 1e6),
-                    22: ("1 MS/s", 1e6),
-                    23: ("1 MS/s", 1e6),
-                    24: ("1 MS/s", 1e6),
-                    25: ("500 KSa/s", 500e3),
-                    26: ("200 KSa/s", 200e3),
-                    27: ("100 KSa/s", 100e3)}
+    SAMPLE_RATES = {0x0A: ("100 KS/s", 100e3),
+                    0x14: ("200 KS/s", 200e3),
+                    0x32: ("500 KS/s", 500e3),
+                    0x01: ("1 MS/s", 1e6),
+                    0x04: ("4 MS/s", 4e6),
+                    0x08: ("8 MS/s", 8e6),
+                    0x10: ("16 MS/s", 16e6),
+                    0x30: ("24 MS/s", 24e6)}
 
     VOLTAGE_RANGES = {0x01: ('+/- 5V', 0.0390625, 2.5),
                       0x02: ('+/- 2.5V', 0.01953125, 1.25),
@@ -243,18 +223,18 @@ class Oscilloscope(object):
         Set the sample rate index for the scope to sample at. This determines the time between each point the scope
         returns.
         :param rate_index: The rate_index. These are the keys for the SAMPLE_RATES dict for the Oscilloscope object.
-                           Common rate_index values and actual sample rate:
-                           0    <->     48  MS/s
-                           11   <->     16  MS/s
-                           12   <->     8   MS/s
-                           13   <->     4   MS/s
-                           14   <->     1   MS/s
-                           25   <->     500 KS/s
-                           26   <->     200 KS/s
-                           27   <->     100 KS/s
+                           Common rate_index values and actual sample rate per channel:
+                           0x0A <-> 100 KS/s
+                           0x14 <-> 200 KS/s
+                           0x32 <-> 500 KS/s
+                           0x01 <-> 1 MS/s
+                           0x04 <-> 4 MS/s
+                           0x08 <-> 8 MS/s
+                           0x10 <-> 16 MS/s
+                           0x30 <-> 24 MS/s
 
                            Outside of the range spanned by these values, and those listed in the SAMPLE_RATES dict, it
-                           is not know how a value such as 28 or 29 will affect the behavior of the scope.
+                           is not know how a value such as 0x29 or 0x28 will affect the behavior of the scope.
         :param timeout: (OPTIONAL) An additonal multiplictive factor for changing the probe impedance.
         :return: True if successful. This method may assert or raise various libusb errors if something went wrong.
         """
