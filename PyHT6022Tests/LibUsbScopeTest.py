@@ -1,7 +1,8 @@
 __author__ = 'Robert Cope'
 
 from unittest import TestCase
-from OpenScopeTools import Oscilloscope
+
+from PyHT6022.LibUsbScope import Oscilloscope
 
 
 class BasicTests(TestCase):

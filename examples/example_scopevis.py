@@ -1,6 +1,9 @@
-import pylab
-from ScopeTools import Oscilloscope
 import time
+
+import pylab
+
+from PyHT6022.HTSDKScope import Oscilloscope
+
 
 if __name__ == "__main__":
     scope0 = Oscilloscope(scopeid=0)

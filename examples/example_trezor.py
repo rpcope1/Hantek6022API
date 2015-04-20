@@ -3,10 +3,12 @@ __author__ = 'Robert Cope', 'Jochen Hoenicke'
 # See more: http://johoe.mooo.com/trezor-power-analysis/
 # Original Author: Jochen Hoenicke
 
-from ScopeTools import Oscilloscope
 from struct import pack
 import StringIO
 import sys
+
+from PyHT6022.HTSDKScope import Oscilloscope
+
 
 scope = Oscilloscope()
 scope_channel = 1

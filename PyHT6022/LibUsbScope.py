@@ -1,9 +1,10 @@
 __author__ = 'Robert Cope'
 
-import usb1
 import time
 
-from hantek_firmware import device_firmware
+import usb1
+
+from PyHT6022.HantekFirmware import device_firmware
 
 
 class Oscilloscope(object):
