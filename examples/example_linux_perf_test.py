@@ -23,7 +23,7 @@ scope.setup()
 scope.open_handle()
 
 scope.set_ch1_voltage_range(voltage_range)
-for sample_rate_index in scope.SAMPLE_RATES.keys():
+for sample_rate_index in [0x30, 0x10, 0x08, 0x04, 0x01, 0x32, 0x14, 0x0A]:
     scope.set_sample_rate(sample_rate_index)
     _, label = scope.convert_sampling_rate_to_measurement_times(1, sample_rate_index)
     print "Sample rate: {}".format(label)
@@ -36,7 +36,7 @@ for sample_rate_index in scope.SAMPLE_RATES.keys():
         for _ in xrange(iterations):
             ch1_data, _ = reader_fxn(data_points)
             times_append(time_fxn())
-        print "Raw Mode, Data Points: {:x}".format(data_points)
+        print "Raw Mode, Data Points: 0x{:x}".format(data_points)
         print_report(times, data_points)
 
         reader_fxn = scope.build_data_reader()
