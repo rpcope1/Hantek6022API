@@ -5,17 +5,17 @@ import os
 from struct import pack
 import StringIO
 
-# No Linux support...yet
-if os.name != 'nt':
-    raise StandardError('Hantek scope library only currently supports windows!')
-
 
 # Set the directory for your HantekScope DLL here.
-marchdll_file = os.path.join("hantek_sdk", "HTMarch.dll")
+marchdll_file = os.path.join("HantekSDK", "HTMarch.dll")
 
 
 class Oscilloscope(object):
     def __init__(self, scopeid=0):  # Set up our scope. The scope id is for each scope attached to the system.
+        # No Linux support...yet
+        if os.name != 'nt':
+            raise StandardError('Hantek SDK Oscilloscope wrapper only supports windows!')
+
         self.marchdll = WinDLL(marchdll_file)
         self.scopeid = c_ushort(scopeid)
         self.channels = {1: 0, 2: 1}
