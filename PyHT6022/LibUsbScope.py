@@ -1,7 +1,7 @@
 __author__ = 'Robert Cope'
 
 import time
-
+import array
 import usb1
 
 from PyHT6022.HantekFirmware import device_firmware
@@ -171,7 +171,7 @@ class Oscilloscope(object):
         if raw:
             return data[::2], data[1::2]
         else:
-            return map(ord, data[::2]), map(ord, data[1::2])
+            return array.array('B', data[::2]), array.array('B', data[1::2])
 
     def build_data_reader(self, raw=False):
         """
@@ -191,6 +191,7 @@ class Oscilloscope(object):
             assert self.open_handle()
         scope_control_read = self.device_handle.controlRead
         scope_bulk_read = self.device_handle.bulkRead
+        array_builder = array.array
         if raw:
             def fast_read_data(data_size, timeout=0):
                 data_size <<= 0x1
@@ -202,7 +203,7 @@ class Oscilloscope(object):
                 data_size <<= 0x1
                 scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
                 data = scope_bulk_read(0x86, data_size, timeout)
-                return map(ord, data[::2]), map(ord, data[1::2])
+                return array_builder('B', data[::2]), array_builder('B', data[1::2])
         return fast_read_data
 
     @staticmethod
