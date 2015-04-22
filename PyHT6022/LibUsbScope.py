@@ -31,6 +31,10 @@ class Oscilloscope(object):
     SET_CH2_VR_VALUE = 0x00
     SET_CH2_VR_INDEX = 0x00
 
+    SET_NUMCH_REQUEST = 0xe4
+    SET_NUMCH_VALUE = 0x00
+    SET_NUMCH_INDEX = 0x00
+
     SAMPLE_RATES = {0x0A: ("100 KS/s", 100e3),
                     0x14: ("200 KS/s", 200e3),
                     0x32: ("500 KS/s", 500e3),
@@ -79,6 +83,7 @@ class Oscilloscope(object):
         if self.device_handle.kernelDriverActive(0):
             self.device_handle.detachKernelDriver(0)
         self.device_handle.claimInterface(0)
+        self.set_num_channels(2)
         return True
 
     def close_handle(self, release_interface=True):
@@ -189,16 +194,20 @@ class Oscilloscope(object):
 
                  This method may assert or raise various libusb errors if something went wrong.
         """
-        data_size <<= 0x1
+        data_size *= self.num_channels
         if not self.device_handle:
             assert self.open_handle()
         if reset:
             self.device_handle.controlRead(0x40, 0xe3, 0x00, 0x00, 0x01, timeout=timeout)
         data = self.device_handle.bulkRead(0x86, data_size, timeout=timeout)
-        if raw:
-            return data[::2], data[1::2]
+        if self.num_channels == 2:
+            chdata = data[::2], data[1::2]
         else:
-            return array.array('B', data[::2]), array.array('B', data[1::2])
+            chdata = data, ''
+        if raw:
+            return chdata
+        else:
+            return map(array.array('B'), data)
 
     def build_data_reader(self, raw=False):
         """
@@ -219,18 +228,32 @@ class Oscilloscope(object):
         scope_control_read = self.device_handle.controlRead
         scope_bulk_read = self.device_handle.bulkRead
         array_builder = array.array
-        if raw:
-            def fast_read_data(data_size, timeout=0):
-                data_size <<= 0x1
-                scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
-                data = scope_bulk_read(0x86, data_size, timeout)
-                return data[::2], data[1::2]
+        if self.num_channels == 1:
+            if raw:
+                def fast_read_data(data_size, timeout=0):
+                    data_size <<= 0x1
+                    scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
+                    data = scope_bulk_read(0x86, data_size, timeout)
+                    return data,''
+            else:
+                def fast_read_data(data_size, timeout=0):
+                    data_size <<= 0x1
+                    scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
+                    data = scope_bulk_read(0x86, data_size, timeout)
+                    return array_builder('B', data), array_builder('B', '')
         else:
-            def fast_read_data(data_size, timeout=0):
-                data_size <<= 0x1
-                scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
-                data = scope_bulk_read(0x86, data_size, timeout)
-                return array_builder('B', data[::2]), array_builder('B', data[1::2])
+            if raw:
+                def fast_read_data(data_size, timeout=0):
+                    data_size <<= 0x1
+                    scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
+                    data = scope_bulk_read(0x86, data_size, timeout)
+                    return data[::2], data[1::2]
+            else:
+                def fast_read_data(data_size, timeout=0):
+                    data_size <<= 0x1
+                    scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
+                    data = scope_bulk_read(0x86, data_size, timeout)
+                    return array_builder('B', data[::2]), array_builder('B', data[1::2])
         return fast_read_data
 
     @staticmethod
@@ -284,6 +307,24 @@ class Oscilloscope(object):
         """
         rate_label, rate = self.SAMPLE_RATES.get(rate_index, ("? MS/s", 1.0))
         return [i/rate for i in xrange(num_points)], rate_label
+
+    def set_num_channels(self, nchannels, timeout=0):
+        """
+        Set the number of active channels.  Either we sample only CH1 or we
+        sample CH1 and CH2.
+        :param nchannels: The number of active channels.  This is 1 or 2.
+        :param timeout: (OPTIONAL) An additonal multiplictive factor for changing the probe impedance.
+        :return: True if successful. This method may assert or raise various libusb errors if something went wrong.
+        """
+        assert nchannels == 1 or nchannels == 2
+        if not self.device_handle:
+            assert self.open_handle()
+        bytes_written = self.device_handle.controlWrite(0x40, self.SET_NUMCH_REQUEST,
+                                                        self.SET_NUMCH_VALUE, self.SET_NUMCH_INDEX,
+                                                        chr(nchannels), timeout=timeout)
+        self.num_channels = nchannels
+        assert bytes_written == 0x01
+        return True
 
     def set_ch1_voltage_range(self, range_index, timeout=0):
         """
