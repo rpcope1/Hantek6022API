@@ -1,4 +1,4 @@
-__author__ = 'Robert Cope'
+__author__ = 'Robert Cope', 'Jochen Hoenicke'
 
 import time
 import array
@@ -8,8 +8,8 @@ from PyHT6022.HantekFirmware import device_firmware
 
 
 class Oscilloscope(object):
-    ALT_VENDOR_ID = 0x04B4
-    VENDOR_ID = 0x04B5
+    NO_FIRMWARE_VENDOR_ID = 0x04B4
+    FIRMWARE_PRESENT_VENDOR_ID = 0x04B5
     MODEL_ID = 0x6022
 
     UPLOAD_FIRMWARE_REQUEST = 0xa0
@@ -53,6 +53,8 @@ class Oscilloscope(object):
         self.device = None
         self.device_handle = None
         self.context = None
+        self.is_device_firmware_present = False
+        self.num_channels = 2
         self.scope_id = scope_id
 
     def setup(self):
@@ -61,13 +63,15 @@ class Oscilloscope(object):
         :return: True if a 6022BE scope was found, False otherwise.
         """
         self.context = usb1.USBContext()
-        self.device = self.context.getByVendorIDAndProductID(self.VENDOR_ID, self.MODEL_ID, skip_on_error=True,
-                                                             skip_on_access_error=True) or \
-            self.context.getByVendorIDAndProductID(self.ALT_VENDOR_ID, self.MODEL_ID, skip_on_error=True,
+
+        self.device = self.context.getByVendorIDAndProductID(self.FIRMWARE_PRESENT_VENDOR_ID, self.MODEL_ID,
+                                                             skip_on_error=True, skip_on_access_error=True) or \
+            self.context.getByVendorIDAndProductID(self.NO_FIRMWARE_VENDOR_ID, self.MODEL_ID, skip_on_error=True,
                                                    skip_on_access_error=True)
 
         if not self.device:
             return False
+        self.is_device_firmware_present = self.device.getVendorID() == self.FIRMWARE_PRESENT_VENDOR_ID
         return True
 
     def open_handle(self):
@@ -83,7 +87,8 @@ class Oscilloscope(object):
         if self.device_handle.kernelDriverActive(0):
             self.device_handle.detachKernelDriver(0)
         self.device_handle.claimInterface(0)
-        # TODO: do this only if firmware present: self.set_num_channels(2)
+        if self.is_device_firmware_present:
+            self.set_num_channels(2)
         return True
 
     def close_handle(self, release_interface=True):
@@ -109,7 +114,8 @@ class Oscilloscope(object):
         as the 6022BE does not have any persistant storage.
         :param firmware: (OPTIONAL) The firmware packets to send. Default: Stock firmware.
         :param timeout: (OPTIONAL) A timeout for each packet transfer on the firmware upload. Default: 60 seconds.
-        :return: True if successful. May assert or raise various libusb errors if something went wrong.
+        :return: True if the correct device vendor was found after flashing firmware, False if the default Vendor ID
+                 was present for the device. May assert or raise various libusb errors if something went wrong.
         """
         if not self.device_handle:
             assert self.open_handle()
@@ -123,13 +129,14 @@ class Oscilloscope(object):
         self.close_handle(release_interface=False)
         self.setup()
         self.open_handle()
-        return True
+        return self.is_device_firmware_present
 
     def read_firmware(self, timeout=60):
         """
         Read the firmware from the target scope device.
         :param timeout: (OPTIONAL) A timeout for each packet transfer on the firmware upload. Default: 60 seconds.
-        :return: True if successful. May assert or raise various libusb errors if something went wrong.
+        :return: The raw device firmware, if successful.
+                 May assert or raise various libusb errors if something went wrong.
         """
         if not self.device_handle:
             assert self.open_handle()
@@ -138,18 +145,18 @@ class Oscilloscope(object):
                                                         0xe600, self.UPLOAD_FIRMWARE_INDEX,
                                                         '\x01', timeout=timeout)
         assert bytes_written == 1
-        list = []
+        firmware_chunk_list = []
         for packet in range(0, 8192/16):
             chunk = self.device_handle.controlRead(0x40, self.UPLOAD_FIRMWARE_REQUEST,
                                                    packet * 16, self.UPLOAD_FIRMWARE_INDEX,
                                                    16, timeout=timeout)
-            list.append(chunk)
+            firmware_chunk_list.append(chunk)
             assert len(chunk) == 16
         bytes_written = self.device_handle.controlWrite(0x40, self.UPLOAD_FIRMWARE_REQUEST,
                                                         0xe600, self.UPLOAD_FIRMWARE_INDEX,
                                                         '\x00', timeout=timeout)
         assert bytes_written == 1
-        return ''.join(list)
+        return ''.join(firmware_chunk_list)
 
     def get_calibration_values(self, timeout=0):
         """
@@ -231,13 +238,11 @@ class Oscilloscope(object):
         if self.num_channels == 1:
             if raw:
                 def fast_read_data(data_size, timeout=0):
-                    data_size <<= 0x1
                     scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
                     data = scope_bulk_read(0x86, data_size, timeout)
-                    return data,''
+                    return data, ''
             else:
                 def fast_read_data(data_size, timeout=0):
-                    data_size <<= 0x1
                     scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
                     data = scope_bulk_read(0x86, data_size, timeout)
                     return array_builder('B', data), array_builder('B', '')
@@ -322,8 +327,8 @@ class Oscilloscope(object):
         bytes_written = self.device_handle.controlWrite(0x40, self.SET_NUMCH_REQUEST,
                                                         self.SET_NUMCH_VALUE, self.SET_NUMCH_INDEX,
                                                         chr(nchannels), timeout=timeout)
-        self.num_channels = nchannels
         assert bytes_written == 0x01
+        self.num_channels = nchannels
         return True
 
     def set_ch1_voltage_range(self, range_index, timeout=0):

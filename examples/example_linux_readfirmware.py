@@ -1,4 +1,4 @@
-__author__ = 'Robert Cope'
+__author__ = 'Jochen Hoenicke'
 
 from PyHT6022.LibUsbScope import Oscilloscope
 

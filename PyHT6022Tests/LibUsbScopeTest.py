@@ -4,6 +4,8 @@ from unittest import TestCase
 
 from PyHT6022.LibUsbScope import Oscilloscope
 
+# TODO: Add more unit tests, add unit tests for changing number of active channels.
+
 
 class BasicTests(TestCase):
     def test_find_device(self):
