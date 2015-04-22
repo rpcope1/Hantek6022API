@@ -11,6 +11,10 @@ commands map as follows:
 
 | *Oscilloscope Command* | *bRequest Value* | *Other Notes*                                       |
 |------------------------|------------------|-----------------------------------------------------|
+|   Set CH0 voltage range|      0xE0        | Possible values: 1,2,5,10 (5V, 2.5V, 1V, 500mV).    |
+|   Set CH1 voltage range|      0xE1        | Possible values: 1,2,5,10 (5V, 2.5V, 1V, 500mV).    |
+
+|   Set Sampling Rate    |      0xE2        | Possible values: 48, 30, 24, 16, 8, 4, 1 (MHz) and 50,20,10 (*10kHz). |
 |   Trigger Oscilloscope |      0xE3        | Host requests bulk data for scope trace after this. |
 
 
