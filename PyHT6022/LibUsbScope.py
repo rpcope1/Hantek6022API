@@ -83,7 +83,7 @@ class Oscilloscope(object):
         if self.device_handle.kernelDriverActive(0):
             self.device_handle.detachKernelDriver(0)
         self.device_handle.claimInterface(0)
-        self.set_num_channels(2)
+        # TODO: do this only if firmware present: self.set_num_channels(2)
         return True
 
     def close_handle(self, release_interface=True):
