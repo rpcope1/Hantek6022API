@@ -5,6 +5,7 @@ __author__ = 'Robert Cope', 'Jochen Hoenicke'
 
 from struct import pack
 import sys
+import time
 
 from PyHT6022.LibUsbScope import Oscilloscope
 
@@ -17,17 +18,21 @@ print "Setting up scope!"
 # set voltage range
 scope.set_ch1_voltage_range(10)
 # 16 MHz sample rate
-scope.set_sample_rate(16)
+scope.set_sample_rate(4)
 # we divide by 10 because otherwise audacity lets us not zoom into it
-samplerate = 16 * 1000 * 1000 / 10
+samplerate = 4 * 1000 * 100
 data = []
 total = 0
 
-print "Reading data from scope!"
-for x in range(0, 20):
-    print x
-    data.append(scope.read_data(8*1000*1000, raw=True)[scope_channel-1])
-    total += len(data[x])
+print "Reading data from scope! in ",
+for x in range(0, 3):
+    print 3-x,"..",
+    sys.stdout.flush()
+    time.sleep(1)
+print "now"
+for x in range(0, 3):
+    data.append(scope.read_data(8*1000*1000, raw=True, reset=(x == 0))[scope_channel-1])
+    total += 8*1000*1000;
 scope.close_handle()
 
 filename = "test.wav"

@@ -120,6 +120,32 @@ class Oscilloscope(object):
         self.open_handle()
         return True
 
+    def read_firmware(self, timeout=60):
+        """
+        Read the firmware from the target scope device.
+        :param timeout: (OPTIONAL) A timeout for each packet transfer on the firmware upload. Default: 60 seconds.
+        :return: True if successful. May assert or raise various libusb errors if something went wrong.
+        """
+        if not self.device_handle:
+            assert self.open_handle()
+
+        bytes_written = self.device_handle.controlWrite(0x40, self.UPLOAD_FIRMWARE_REQUEST,
+                                                        0xe600, self.UPLOAD_FIRMWARE_INDEX,
+                                                        '\x01', timeout=timeout)
+        assert bytes_written == 1
+        list = []
+        for packet in range(0, 8192/16):
+            chunk = self.device_handle.controlRead(0x40, self.UPLOAD_FIRMWARE_REQUEST,
+                                                   packet * 16, self.UPLOAD_FIRMWARE_INDEX,
+                                                   16, timeout=timeout)
+            list.append(chunk)
+            assert len(chunk) == 16
+        bytes_written = self.device_handle.controlWrite(0x40, self.UPLOAD_FIRMWARE_REQUEST,
+                                                        0xe600, self.UPLOAD_FIRMWARE_INDEX,
+                                                        '\x00', timeout=timeout)
+        assert bytes_written == 1
+        return ''.join(list)
+
     def get_calibration_values(self, timeout=0):
         """
         Retrieve the current calibration values from the oscilloscope.
@@ -148,7 +174,7 @@ class Oscilloscope(object):
         assert data_len == len(cal_list)
         return True
 
-    def read_data(self, data_size=0x400, raw=False, timeout=0):
+    def read_data(self, data_size=0x400, raw=False, reset=True, timeout=0):
         """
         Read both channel's ADC data from the device. No trigger support, you need to do this in software.
         :param data_size: (OPTIONAL) The number of data points for each channel to retrieve. Default: 0x400 points.
@@ -166,7 +192,8 @@ class Oscilloscope(object):
         data_size <<= 0x1
         if not self.device_handle:
             assert self.open_handle()
-        self.device_handle.controlRead(0x40, 0xe3, 0x00, 0x00, 0x01, timeout=timeout)
+        if reset:
+            self.device_handle.controlRead(0x40, 0xe3, 0x00, 0x00, 0x01, timeout=timeout)
         data = self.device_handle.bulkRead(0x86, data_size, timeout=timeout)
         if raw:
             return data[::2], data[1::2]
