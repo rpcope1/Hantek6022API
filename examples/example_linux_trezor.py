@@ -34,7 +34,7 @@ for x in range(0, 3):
     time.sleep(1)
 print "now"
 for x in range(0, numblocks):
-    data.append(scope.read_data(blocksize, raw=True, reset=(x == 0))[scope_channel-1])
+    data.append(scope.read_data(blocksize, raw=True, clear_fifo=(x == 0))[scope_channel-1])
 scope.close_handle()
 total = blocksize * numblocks
 
