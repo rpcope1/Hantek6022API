@@ -186,11 +186,13 @@ class Oscilloscope(object):
         assert data_len == len(cal_list)
         return True
 
-    def read_data(self, data_size=0x400, raw=False, reset=True, timeout=0):
+    def read_data(self, data_size=0x400, raw=False, clear_fifo=True, timeout=0):
         """
         Read both channel's ADC data from the device. No trigger support, you need to do this in software.
         :param data_size: (OPTIONAL) The number of data points for each channel to retrieve. Default: 0x400 points.
         :param raw: (OPTIONAL) Return the raw bytestrings from the scope. Default: Off
+        :param clear_fifo: (OPTIONAL) Clear the scope's FIFO buffer, causing all data returned to start immediately
+                           after.
         :param timeout: (OPTIONAL) The timeout for each bulk transfer from the scope. Default: 0 (No timeout)
         :return: If raw, two bytestrings are returned, the first for CH1, the second for CH2. If raw is off, two
                  lists are returned (by iterating over the bytestrings and converting to ordinals). The lists contain
@@ -204,7 +206,7 @@ class Oscilloscope(object):
         data_size *= self.num_channels
         if not self.device_handle:
             assert self.open_handle()
-        if reset:
+        if clear_fifo:
             self.device_handle.controlRead(0x40, 0xe3, 0x00, 0x00, 0x01, timeout=timeout)
         data = self.device_handle.bulkRead(0x86, data_size, timeout=timeout)
         if self.num_channels == 2:
@@ -216,10 +218,11 @@ class Oscilloscope(object):
         else:
             return array.array('B', data)
 
-    def build_data_reader(self, raw=False):
+    def build_data_reader(self, raw=False, clear_fifo=True):
         """
         Build a (slightly) more optimized reader closure, for (slightly) better performance.
         :param raw: (OPTIONAL) Return the raw bytestrings from the scope. Default: Off
+        :param clear_fifo: (OPTIONAL) Clear the FIFO buffer on the device on the read, restarting data collection.
         :return: A fast_read_data function, which behaves much like the read_data function. The fast_read_data
                  function returned takes two parameters:
                  :param data_size: Number of data points to return (1 point <-> 1 byte).
@@ -235,30 +238,50 @@ class Oscilloscope(object):
         scope_control_read = self.device_handle.controlRead
         scope_bulk_read = self.device_handle.bulkRead
         array_builder = array.array
-        if self.num_channels == 1:
-            if raw:
-                def fast_read_data(data_size, timeout=0):
-                    scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
-                    data = scope_bulk_read(0x86, data_size, timeout)
-                    return data, ''
-            else:
-                def fast_read_data(data_size, timeout=0):
-                    scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
-                    data = scope_bulk_read(0x86, data_size, timeout)
-                    return array_builder('B', data), array_builder('B', '')
+        if self.num_channels == 1 and raw and clear_fifo:
+            def fast_read_data(data_size, timeout=0):
+                scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
+                data = scope_bulk_read(0x86, data_size, timeout)
+                return data, ''
+        elif self.num_channels == 1 and raw and not clear_fifo:
+            def fast_read_data(data_size, timeout=0):
+                data = scope_bulk_read(0x86, data_size, timeout)
+                return data, ''
+        elif self.num_channels == 1 and not raw and clear_fifo:
+            def fast_read_data(data_size, timeout=0):
+                scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
+                data = scope_bulk_read(0x86, data_size, timeout)
+                return array_builder('B', data), array_builder('B', '')
+        elif self.num_channels == 1 and not raw and not clear_fifo:
+            def fast_read_data(data_size, timeout=0):
+                data = scope_bulk_read(0x86, data_size, timeout)
+                return array_builder('B', data), array_builder('B', '')
+        elif self.num_channels == 2 and raw and clear_fifo:
+            def fast_read_data(data_size, timeout=0):
+                data_size <<= 0x1
+                scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
+                data = scope_bulk_read(0x86, data_size, timeout)
+                return data[::2], data[1::2]
+        elif self.num_channels == 2 and raw and not clear_fifo:
+            def fast_read_data(data_size, timeout=0):
+                data_size <<= 0x1
+                data = scope_bulk_read(0x86, data_size, timeout)
+                return data[::2], data[1::2]
+        elif self.num_channels == 2 and not raw and clear_fifo:
+            def fast_read_data(data_size, timeout=0):
+                data_size <<= 0x1
+                scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
+                data = scope_bulk_read(0x86, data_size, timeout)
+                return array_builder('B', data[::2]), array_builder('B', data[1::2])
+
+        elif self.num_channels == 2 and not raw and not clear_fifo:
+            def fast_read_data(data_size, timeout=0):
+                data_size <<= 0x1
+                data = scope_bulk_read(0x86, data_size, timeout)
+                return array_builder('B', data[::2]), array_builder('B', data[1::2])
         else:
-            if raw:
-                def fast_read_data(data_size, timeout=0):
-                    data_size <<= 0x1
-                    scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
-                    data = scope_bulk_read(0x86, data_size, timeout)
-                    return data[::2], data[1::2]
-            else:
-                def fast_read_data(data_size, timeout=0):
-                    data_size <<= 0x1
-                    scope_control_read(0x40, 0xe3, 0x00, 0x00, 0x01, timeout)
-                    data = scope_bulk_read(0x86, data_size, timeout)
-                    return array_builder('B', data[::2]), array_builder('B', data[1::2])
+            # Should never be here.
+            assert False
         return fast_read_data
 
     @staticmethod
