@@ -12,8 +12,8 @@ class Oscilloscope(object):
     FIRMWARE_PRESENT_VENDOR_ID = 0x04B5
     MODEL_ID = 0x6022
 
-    UPLOAD_FIRMWARE_REQUEST = 0xa0
-    UPLOAD_FIRMWARE_INDEX = 0x00
+    RW_FIRMWARE_REQUEST = 0xa0
+    RW_FIRMWARE_INDEX = 0x00
 
     RW_CALIBRATION_REQUEST = 0xa2
     RW_CALIBRATION_VALUE = 0x08
@@ -120,8 +120,8 @@ class Oscilloscope(object):
         if not self.device_handle:
             assert self.open_handle()
         for packet in firmware:
-            bytes_written = self.device_handle.controlWrite(0x40, self.UPLOAD_FIRMWARE_REQUEST,
-                                                            packet.value, self.UPLOAD_FIRMWARE_INDEX,
+            bytes_written = self.device_handle.controlWrite(0x40, self.RW_FIRMWARE_REQUEST,
+                                                            packet.value, self.RW_FIRMWARE_INDEX,
                                                             packet.data, timeout=timeout)
             assert bytes_written == packet.size
         # After firmware is written, scope will typically show up again as a different device, so scan again
@@ -141,19 +141,19 @@ class Oscilloscope(object):
         if not self.device_handle:
             assert self.open_handle()
 
-        bytes_written = self.device_handle.controlWrite(0x40, self.UPLOAD_FIRMWARE_REQUEST,
-                                                        0xe600, self.UPLOAD_FIRMWARE_INDEX,
+        bytes_written = self.device_handle.controlWrite(0x40, self.RW_FIRMWARE_REQUEST,
+                                                        0xe600, self.RW_FIRMWARE_INDEX,
                                                         '\x01', timeout=timeout)
         assert bytes_written == 1
         firmware_chunk_list = []
         for packet in range(0, 8192/16):
-            chunk = self.device_handle.controlRead(0x40, self.UPLOAD_FIRMWARE_REQUEST,
-                                                   packet * 16, self.UPLOAD_FIRMWARE_INDEX,
+            chunk = self.device_handle.controlRead(0x40, self.RW_FIRMWARE_REQUEST,
+                                                   packet * 16, self.RW_FIRMWARE_INDEX,
                                                    16, timeout=timeout)
             firmware_chunk_list.append(chunk)
             assert len(chunk) == 16
-        bytes_written = self.device_handle.controlWrite(0x40, self.UPLOAD_FIRMWARE_REQUEST,
-                                                        0xe600, self.UPLOAD_FIRMWARE_INDEX,
+        bytes_written = self.device_handle.controlWrite(0x40, self.RW_FIRMWARE_REQUEST,
+                                                        0xe600, self.RW_FIRMWARE_INDEX,
                                                         '\x00', timeout=timeout)
         assert bytes_written == 1
         return ''.join(firmware_chunk_list)
