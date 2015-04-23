@@ -169,7 +169,7 @@ class Oscilloscope(object):
             assert self.open_handle()
         cal_string = self.device_handle.controlRead(0x40, self.RW_CALIBRATION_REQUEST, self.RW_CALIBRATION_VALUE,
                                                     self.RW_CALIBRATION_INDEX, 0x20, timeout=timeout)
-        return map(ord, cal_string)
+        return array.array('B', cal_string)
 
     def set_calibration_values(self, cal_list, timeout=0):
         """
@@ -180,7 +180,7 @@ class Oscilloscope(object):
         """
         if not self.device_handle:
             assert self.open_handle()
-        cal_list = cal_list if isinstance(cal_list, basestring) else "".join(map(chr, cal_list))
+        cal_list = cal_list if isinstance(cal_list, basestring) else array.array('c', cal_list).tostring()
         data_len = self.device_handle.controlWrite(0x40, self.RW_CALIBRATION_REQUEST, self.RW_CALIBRATION_VALUE,
                                                    self.RW_CALIBRATION_INDEX, cal_list, timeout=timeout)
         assert data_len == len(cal_list)
@@ -214,7 +214,7 @@ class Oscilloscope(object):
         if raw:
             return chdata
         else:
-            return map(array.array('B'), data)
+            return array.array('B', data)
 
     def build_data_reader(self, raw=False):
         """
