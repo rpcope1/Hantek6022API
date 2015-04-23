@@ -4,7 +4,7 @@ import time
 import array
 import usb1
 
-from PyHT6022.HantekFirmware import device_firmware
+from PyHT6022.HantekFirmware import default_firmware
 
 
 class Oscilloscope(object):
@@ -108,7 +108,7 @@ class Oscilloscope(object):
     def __del__(self):
         self.close_handle()
 
-    def flash_firmware(self, firmware=device_firmware, timeout=60):
+    def flash_firmware(self, firmware=default_firmware, timeout=60):
         """
         Flash scope firmware to the target scope device. This needs to occur once when the device is first attached,
         as the 6022BE does not have any persistant storage.
