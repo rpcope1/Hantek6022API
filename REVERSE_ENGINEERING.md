@@ -15,14 +15,13 @@ commands map as follows:
 |   Set CH1 voltage range|      0xE1        | Possible values: 1,2,5,10 (5V, 2.5V, 1V, 500mV).                      |
 |   Set Sampling Rate    |      0xE2        | Possible values: 48, 30, 24, 16, 8, 4, 1 (MHz) and 50,20,10 (*10kHz). |
 |   Trigger Oscilloscope |      0xE3        | Host requests bulk data for scope trace after this. This clears the   |
-|                        |                  |     FIFO on the FX2LP.                                                |
+|                        |                   |     FIFO on the FX2LP.                                               |
 |   Read/Write Scope Cal |      0xA2        | If sent as a read, this transfers the current scope calibration. If   |
-|                        |                  |     data is sent with this control, this sets the scope calibration   |
+|                        |                   |     data is sent with this control, this sets the scope calibration  |
 |   Read/Write Firmware  |      0xA0        | If sent as a read, this transfers the current scope firmware. If      |
-|                        |                  |     data is sent with this control, it begins to write the firmware.  |
-|                        |                  |     This control functionality is built into the Cypress FX2LP, and   |
-|                        |                  |     must be used to bootstrap the scope when first connected.         |
-|------------------------|------------------|-----------------------------------------------------------------------|
+|                        |                   |     data is sent with this control, it begins to write the firmware. |
+|                        |                   |     This control functionality is built into the Cypress FX2LP, and  |
+|                        |                   |     must be used to bootstrap the scope when first connected.        |
 
 All commands are sent with index = 0x00, the calibration commands are sent with value 0x08, the 0xEx requests are sent
 with value 0x00, and the value for R/W command is dependent on the Cypress protocol for interacting with the firmware.
