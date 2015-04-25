@@ -228,7 +228,7 @@ class Oscilloscope(object):
         if not self.device_handle:
             assert self.open_handle()
         data = self.device_handle.controlRead(0x40, self.RW_EEPROM_REQUEST, offset,
-                                                    self.RW_EEPROM_INDEX, length, timeout=timeout)
+                                              self.RW_EEPROM_INDEX, length, timeout=timeout)
         return data
 
     def write_eeprom(self, offset, data, timeout=0):
