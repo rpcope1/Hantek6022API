@@ -254,6 +254,15 @@ class Oscilloscope(object):
         else:
             return array.array('B', chdata[0]), array.array('B', chdata[1])
 
+    def clear_fifo(self, timeout=0):
+        """
+        Clear the FIFO used to buffer the scope data.
+        :param timeout: (OPTIONAL) The timeout for each bulk transfer from the scope. Default: 0 (No timeout)
+        :return: True if successful. May assert or raise various libusb errors if something went wrong.
+        """
+        self.device_handle.controlRead(0x40, 0xe3, 0x00, 0x00, 0x01, timeout=timeout)
+        return True
+
     def build_data_reader(self, raw=False, clear_fifo=True):
         """
         Build a (slightly) more optimized reader closure, for (slightly) better performance.
