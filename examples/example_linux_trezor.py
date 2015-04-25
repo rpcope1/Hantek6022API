@@ -9,21 +9,29 @@ import time
 
 from PyHT6022.LibUsbScope import Oscilloscope
 
+voltagerange = 10       # 1 (5V), 2 (2.6V), 5 or 10
+samplerate = 16         # sample rate in MHz or in 10khz
+blocksize = 8*1000*1000 # set to <  8 000 000 for two channels
+                        #        < 16 000 000 for one channel
+                        # must be divisible by 512
+numblocks = 1           # number of blocks to sample
+numchannels = 1
+
 
 scope = Oscilloscope()
 scope.setup()
 scope.open_handle()
+scope.flash_firmware()
 scope_channel = 1
 print "Setting up scope!"
-blocksize = 16*1000*1000  # set to 8000000 for two channels
-numblocks = 3
-scope.set_num_channels(1)
+
+scope.set_num_channels(numchannels)
 # set voltage range
-scope.set_ch1_voltage_range(10)
-# 16 MHz sample rate
-scope.set_sample_rate(30)
-# we divide by 1000 because otherwise audacity lets us not zoom into it
-samplerate = 30 * 1000
+scope.set_ch1_voltage_range(voltagerange)
+# set sample rate
+scope.set_sample_rate(samplerate)
+# we divide by 100 because otherwise audacity lets us not zoom into it
+samplerate = samplerate * 1000 * 10
 data = []
 total = 0
 
@@ -34,9 +42,10 @@ for x in range(0, 3):
     time.sleep(1)
 print "now"
 for x in range(0, numblocks):
-    data.append(scope.read_data(blocksize, raw=True, clear_fifo=(x == 0))[scope_channel-1])
+    data.append(scope.read_data(blocksize, raw=True, clear_fifo=False)[scope_channel-1])
 scope.close_handle()
-total = blocksize * numblocks
+rawdata = ''.join(data)
+total = len(rawdata)
 
 filename = "test.wav"
 print "Writing out data from scope to {}".format(filename)
@@ -50,6 +59,5 @@ with open(filename, "wb") as wf:
     wf.write("\x01\x00\x08\x00")
     wf.write("data")
     wf.write(pack("<L", total))
-    for x in data:
-        wf.write(x)
+    wf.write(rawdata)
 print "Done"

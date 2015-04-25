@@ -15,9 +15,8 @@ class Oscilloscope(object):
     RW_FIRMWARE_REQUEST = 0xa0
     RW_FIRMWARE_INDEX = 0x00
 
-    RW_CALIBRATION_REQUEST = 0xa2
-    RW_CALIBRATION_VALUE = 0x08
-    RW_CALIBRATION_INDEX = 0x00
+    RW_EEPROM_REQUEST = 0xa2
+    RW_EEPROM_INDEX = 0x00
 
     SET_SAMPLE_RATE_REQUEST = 0xe2
     SET_SAMPLE_RATE_VALUE = 0x00
@@ -34,6 +33,8 @@ class Oscilloscope(object):
     SET_NUMCH_REQUEST = 0xe4
     SET_NUMCH_VALUE = 0x00
     SET_NUMCH_INDEX = 0x00
+
+    CALIBRATION_EEPROM_OFFSET = 0x08
 
     SAMPLE_RATES = {0x0A: ("100 KS/s", 100e3),
                     0x14: ("200 KS/s", 200e3),
@@ -199,11 +200,7 @@ class Oscilloscope(object):
         :return: A 32 single byte int list of calibration values, if successful.
                  May assert or raise various libusb errors if something went wrong.
         """
-        if not self.device_handle:
-            assert self.open_handle()
-        cal_string = self.device_handle.controlRead(0x40, self.RW_CALIBRATION_REQUEST, self.RW_CALIBRATION_VALUE,
-                                                    self.RW_CALIBRATION_INDEX, 0x20, timeout=timeout)
-        return array.array('B', cal_string)
+        return array.array('B', read_eeprom(CALIBRATION_EEPROM_OFFSET, 32, timeout=timeout))
 
     def set_calibration_values(self, cal_list, timeout=0):
         """
@@ -212,12 +209,36 @@ class Oscilloscope(object):
         :param timeout: (OPTIONAL) A timeout for the transfer. Default: 0 (No timeout)
         :return: True if successful. May assert or raise various libusb errors if something went wrong.
         """
+        cal_list = cal_list if isinstance(cal_list, basestring) else array.array('c', cal_list).tostring()
+        return write_eeprom(CALIBRATION_EEPROM_OFFSET, cal_list, timeout=timeout)
+
+    def read_eeprom(self, offset, length, timeout=0):
+        """
+        Retrieve values from the eeprom on the oscilloscope.
+        :param offset: start address into the eeprom.
+        :param length: number of bytes to retrieve.
+        :param timeout: (OPTIONAL) A timeout for the transfer. Default: 0 (No timeout)
+        :return: The raw eeprom data.
+        """
         if not self.device_handle:
             assert self.open_handle()
-        cal_list = cal_list if isinstance(cal_list, basestring) else array.array('c', cal_list).tostring()
-        data_len = self.device_handle.controlWrite(0x40, self.RW_CALIBRATION_REQUEST, self.RW_CALIBRATION_VALUE,
-                                                   self.RW_CALIBRATION_INDEX, cal_list, timeout=timeout)
-        assert data_len == len(cal_list)
+        data = self.device_handle.controlRead(0x40, self.RW_EEPROM_REQUEST, offset,
+                                                    self.RW_EEPROM_INDEX, length, timeout=timeout)
+        return data
+
+    def write_eeprom(self, offset, data, timeout=0):
+        """
+        Set the a calibration level for the oscilloscope.
+        :param offset: The start address into the eeprom.
+        :param data: The raw string of data to write.
+        :param timeout: (OPTIONAL) A timeout for the transfer. Default: 0 (No timeout)
+        :return: True if successful. May assert or raise various libusb errors if something went wrong.
+        """
+        if not self.device_handle:
+            assert self.open_handle()
+        data_len = self.device_handle.controlWrite(0x40, self.RW_EEPROM_REQUEST, offset,
+                                                   self.RW_EEPROM_INDEX, data, timeout=timeout)
+        assert data_len == len(data)
         return True
 
     def read_data(self, data_size=0x400, raw=False, clear_fifo=True, timeout=0):
@@ -353,10 +374,11 @@ class Oscilloscope(object):
                            0x04 <-> 4 MS/s
                            0x08 <-> 8 MS/s
                            0x10 <-> 16 MS/s
-                           0x30 <-> 24 MS/s
+                           0x18 <-> 24 MS/s
+                           0x1e <-> 30 MS/s
+                           0x30 <-> 48 MS/s
 
-                           Outside of the range spanned by these values, and those listed in the SAMPLE_RATES dict, it
-                           is not know how a value such as 0x29 or 0x28 will affect the behavior of the scope.
+                           Other values are not supported.  The 24 MS/s mode is buggy and doesn't work at all.
         :param timeout: (OPTIONAL) An additonal multiplictive factor for changing the probe impedance.
         :return: True if successful. This method may assert or raise various libusb errors if something went wrong.
         """
