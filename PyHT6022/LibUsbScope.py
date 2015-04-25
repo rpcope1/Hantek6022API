@@ -52,7 +52,7 @@ class Oscilloscope(object):
     def __init__(self, scope_id=0):
         self.device = None
         self.device_handle = None
-        self.context = None
+        self.context = usb1.USBContext()
         self.is_device_firmware_present = False
         self.supports_single_channel = False
         self.num_channels = 2
@@ -63,8 +63,6 @@ class Oscilloscope(object):
         Attempt to find a suitable scope to run.
         :return: True if a 6022BE scope was found, False otherwise.
         """
-        self.context = usb1.USBContext()
-
         self.device = self.context.getByVendorIDAndProductID(self.FIRMWARE_PRESENT_VENDOR_ID, self.MODEL_ID,
                                                              skip_on_error=True, skip_on_access_error=True) or \
             self.context.getByVendorIDAndProductID(self.NO_FIRMWARE_VENDOR_ID, self.MODEL_ID, skip_on_error=True,
