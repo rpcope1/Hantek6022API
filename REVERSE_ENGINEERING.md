@@ -15,7 +15,7 @@ commands map as follows:
 |   Set CH1 voltage range|      0xE1        | Possible values: 1,2,5,10 (5V, 2.5V, 1V, 500mV).                       |
 |   Set Sampling Rate    |      0xE2        | Possible values: 48, 30, 24, 16, 8, 4, 1 (MHz) and 50,20,10 (*10kHz).  |
 |   Trigger Oscilloscope |      0xE3        | Clear the FIFO on the FX2LP                                            |
-|   Read/Write Scope Cal |      0xA2        | Read or write the scope calibration.                                   |
+|   Read/Write EEPROM    |      0xA2        | Read or write the eeprom built into the scope.                         |
 |   Read/Write Firmware  |      0xA0        | Read or write the scope firmware. Must be done on scope initialization |
 
 All commands are sent with index = 0x00, the calibration commands are sent with value 0x08, the 0xEx requests are sent
@@ -23,6 +23,16 @@ with value 0x00, and the value for R/W command is dependent on the Cypress proto
 
 Additionally, a bulk read from end point 0x86 reads the current contents of the FIFO, which the ADC is filling. The
 reference Python libusb code should give further insight into the means for which to interact with the device.
+
+# EEPROM
+
+The device contains a 512 byte eeprom.  The first 8 byte of the eeprom
+are important for startup.  They contain the initial USB vendor and
+device id to allow it to be detected before the firmware is flashed.
+See chapter 3.4.2 of the ez-usb technical reference manual.
+
+The next 32 bytes are used by the windows SDK to store calibration data.  They
+have no effect to the device itself.
 
 # Modified and stock firmware
 
