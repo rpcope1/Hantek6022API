@@ -43,7 +43,7 @@ scope.set_sample_rate(sample_rate_index)
 scope.set_ch1_voltage_range(voltage_range)
 time.sleep(1)
 
-data = deque(maxlen=4*1024*1024)
+data = deque(maxlen=2*1024*1024)
 
 
 def extend_callback(ch1_data, _):
@@ -54,7 +54,7 @@ print "Clearing FIFO and starting data transfer..."
 scope.clear_fifo()
 shutdown_event = scope.read_async(extend_callback, data_points)
 i = 0
-while time.time() - start_time < 0.10:
+while time.time() - start_time < 1:
     print i
     i += 1
     time.sleep(0.01)
@@ -73,5 +73,7 @@ plt.plot(np.fft.fft(scope.scale_read_data(data, voltage_range)))
 stab = build_stability_array(scope.scale_read_data(data, voltage_range), threshold=1.2)
 stab_avg, stab_std = np.average(stab), np.std(stab)
 print "Stability", stab_avg, "+/-", stab_std, "({}% deviance)".format(100.0*stab_std/stab_avg)
+bad_pulse_count = len([p for p in stab if abs(stab_avg - p) >= stab_std])
+print "Pulses more than 1 std dev out: {}/{} ({} %)".format(bad_pulse_count, len(stab), 100.0*bad_pulse_count/len(stab))
 print stab
 plt.show()
