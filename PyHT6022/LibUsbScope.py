@@ -3,6 +3,8 @@ __author__ = 'Robert Cope', 'Jochen Hoenicke'
 import time
 import array
 import usb1
+import select
+import threading
 
 from PyHT6022.HantekFirmware import default_firmware, fx2_ihex_to_control_packets
 
@@ -53,6 +55,9 @@ class Oscilloscope(object):
         self.device = None
         self.device_handle = None
         self.context = usb1.USBContext()
+        self.usb_poller = usb1.USBPollerThread(self.context, select.poll())
+        # TODO: Should the poller be started on initialization?
+        self.usb_poller.start()
         self.is_device_firmware_present = False
         self.supports_single_channel = False
         self.num_channels = 2
@@ -326,6 +331,43 @@ class Oscilloscope(object):
             # Should never be here.
             assert False
         return fast_read_data
+
+    def read_async(self, callback, data_size, outstanding_bulk_transfers=3, raw=False):
+        array_builder = array.array
+        shutdown_event = threading.Event()
+        shutdown_is_set = shutdown_event.is_set
+        if self.num_channels == 1 and raw:
+            def bulk_tranfer_callback(bulk_transfer):
+                if not shutdown_is_set():
+                    bulk_transfer.submit()
+                data = bulk_transfer.getBuffer()[0:bulk_transfer.getActualLength()]
+                callback(data, '')
+        elif self.num_channels == 1 and not raw:
+            def bulk_tranfer_callback(bulk_transfer):
+                if not shutdown_is_set():
+                    bulk_transfer.submit()
+                data = bulk_transfer.getBuffer()[0:bulk_transfer.getActualLength()]
+                callback(array_builder('B', data), [])
+        elif self.num_channels == 2 and raw:
+            def bulk_tranfer_callback(bulk_transfer):
+                if not shutdown_is_set():
+                    bulk_transfer.submit()
+                data = bulk_transfer.getBuffer()[0:bulk_transfer.getActualLength()]
+                callback(data[::2], data[1::2])
+        elif self.num_channels == 2 and not raw:
+            def bulk_tranfer_callback(bulk_transfer):
+                if not shutdown_is_set():
+                    bulk_transfer.submit()
+                data = bulk_transfer.getBuffer()[0:bulk_transfer.getActualLength()]
+                callback(array_builder('B', data[::2]), array_builder('B', data[1::2]))
+        else:
+            assert False
+        for _ in xrange(outstanding_bulk_transfers):
+            transfer = self.device_handle.getTransfer()
+            transfer.setBulk(0x86, data_size, callback=bulk_tranfer_callback)
+            transfer.submit()
+        return shutdown_event
+
 
     @staticmethod
     def scale_read_data(read_data, voltage_range, probe_multiplier=1):
