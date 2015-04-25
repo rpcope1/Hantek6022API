@@ -216,7 +216,7 @@ class Oscilloscope(object):
         if raw:
             return chdata
         else:
-            return array.array('B', data)
+            return array.array('B', chdata[0]), array.array('B', chdata[1])
 
     def build_data_reader(self, raw=False, clear_fifo=True):
         """
