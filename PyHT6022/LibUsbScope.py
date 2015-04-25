@@ -200,7 +200,7 @@ class Oscilloscope(object):
         :return: A 32 single byte int list of calibration values, if successful.
                  May assert or raise various libusb errors if something went wrong.
         """
-        return array.array('B', read_eeprom(CALIBRATION_EEPROM_OFFSET, 32, timeout=timeout))
+        return array.array('B', self.read_eeprom(self.CALIBRATION_EEPROM_OFFSET, 32, timeout=timeout))
 
     def set_calibration_values(self, cal_list, timeout=0):
         """
@@ -210,7 +210,7 @@ class Oscilloscope(object):
         :return: True if successful. May assert or raise various libusb errors if something went wrong.
         """
         cal_list = cal_list if isinstance(cal_list, basestring) else array.array('c', cal_list).tostring()
-        return write_eeprom(CALIBRATION_EEPROM_OFFSET, cal_list, timeout=timeout)
+        return self.write_eeprom(self.CALIBRATION_EEPROM_OFFSET, cal_list, timeout=timeout)
 
     def read_eeprom(self, offset, length, timeout=0):
         """
