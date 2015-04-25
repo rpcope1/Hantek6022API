@@ -83,7 +83,7 @@ in the stock firmware.
 | 0e/0f | usb config descriptor                           |
 | 10/11 | usb config descriptor other speed mode          |
 | 12/13 | usb config descriptor fullspeed mode            |
-| 14/15 | usb descriptor 6                                |
+| 14/15 | usb device qualifier                            |
 | 16/17 | usb string table                                |
 | 18    | usb interface                                   |
 | 19    | i2c id of eeprom (0x50 or 0x51)                 |
@@ -108,5 +108,22 @@ bits:
 | 2h    | green led signalling                            |
 | 3h    |                                                 |
 | 4h    | suspend pending                                 |
-| 5h    |                                                 |
+| 5h    | high speed                                      |
 | 6h    | usb renum flag???                               |
+
+
+
+# USB descriptors
+
+The USB descriptors are at offset `0x0e00` in the firmware.  There are
+some curiosities:
+
+- Vendor of uninitialized device is `0x04b4` (Cypress Semiconductor Corp.)
+  who is the designer of the ez-usb chip.
+- Vendor of initialized device is `0x04b5` (ROHM LSI Systems USA)
+  who is probably not related to this device at all.
+- The device configures two endpoints: 2 (output), 6 (input).  Endpoint 2
+  is never used, but prevents endpoint 6 to take the full 4kb fifo.
+- The low speed configuration claims 4 endpoints, but defines only 2.
+- The manufacturer string is `OEM   ` (with three spaces).
+  The product string is `HantekDSO6022BE `.
