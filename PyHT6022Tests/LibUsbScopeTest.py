@@ -11,6 +11,7 @@ from PyHT6022.HantekFirmware import stock_firmware, mod_firmware_01
 
 class BasicTests(TestCase):
     def test_find_device(self):
+        print "Testing finding device and flashing stock firmware."
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
@@ -18,6 +19,7 @@ class BasicTests(TestCase):
         assert scope.close_handle()
 
     def test_flash_firmware(self):
+        print "Testing flashing multiple firmwares."
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
@@ -27,6 +29,7 @@ class BasicTests(TestCase):
         assert scope.close_handle()
 
     def test_get_cal_values(self):
+        print "Testing getting calibration values."
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
@@ -36,6 +39,7 @@ class BasicTests(TestCase):
         assert scope.close_handle()
 
     def test_read_data(self):
+        print "Testing reading data from the oscilloscope."
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
@@ -46,6 +50,7 @@ class BasicTests(TestCase):
         assert scope.close_handle()
 
     def test_read_many_sizes(self):
+        print "Testing reading many different data sizes"
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
@@ -61,6 +66,7 @@ class BasicTests(TestCase):
         assert scope.close_handle()
 
     def test_set_sample_rate(self):
+        print "Testing setting the sample rate."
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
@@ -70,6 +76,7 @@ class BasicTests(TestCase):
         assert scope.close_handle()
 
     def test_set_channel_voltage_range(self):
+        print "Testing setting the voltage range."
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
@@ -80,6 +87,7 @@ class BasicTests(TestCase):
         assert scope.close_handle()
 
     def test_data_scaling(self):
+        print "Testing setting various scale facotrs and reading."
         scale_factor = 0x01
         scope = Oscilloscope()
         assert scope.setup()
@@ -94,6 +102,7 @@ class BasicTests(TestCase):
         assert scope.close_handle()
 
     def test_set_num_channels(self):
+        print "Testing setting the number of channels with modified firmware."
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
@@ -104,6 +113,7 @@ class BasicTests(TestCase):
         assert scope.close_handle()
 
     def test_set_one_channel_and_read(self):
+        print "Testing setting one channel and reading it."
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
@@ -111,6 +121,16 @@ class BasicTests(TestCase):
         assert scope.set_ch1_voltage_range(0xA)
         assert scope.set_sample_rate(0x10)
         assert scope.set_num_channels(1)
-        ch1_data, _ = scope.read_data(0x4000)
+        ch1_data, ch2_data = scope.read_data(0x4000)
         assert ch1_data
+        assert not ch2_data
+        assert scope.close_handle()
+
+    def test_read_firmware(self):
+        print "Testing read_firmware method on scope."
+        scope = Oscilloscope()
+        assert scope.setup()
+        assert scope.open_handle()
+        assert scope.flash_firmware(stock_firmware, supports_single_channel=False)
+        assert scope.read_firmware()
         assert scope.close_handle()

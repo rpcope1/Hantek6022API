@@ -145,9 +145,12 @@ class Oscilloscope(object):
         """
         return self.flash_firmware(firmware=fx2_ihex_to_control_packets(hex_file), timeout=timeout)
 
-    def read_firmware(self, timeout=60):
+    def read_firmware(self, to_ihex=True, chunk_len=16, timeout=60):
         """
-        Read the firmware from the target scope device.
+        Read the entire device RAM, and return a raw string.
+        :param to_ihex: (OPTIONAL) Convert the firmware into the Intel hex format after reading. Otherwise, return
+                        the firmware is a raw byte string. Default: True
+        :param chunk_len: (OPTIONAL) The length of RAM chunks to pull from the device at a time. Default: 16 bytes.
         :param timeout: (OPTIONAL) A timeout for each packet transfer on the firmware upload. Default: 60 seconds.
         :return: The raw device firmware, if successful.
                  May assert or raise various libusb errors if something went wrong.
@@ -160,9 +163,10 @@ class Oscilloscope(object):
                                                         '\x01', timeout=timeout)
         assert bytes_written == 1
         firmware_chunk_list = []
-        for packet in range(0, 8192/16):
+        # TODO: Fix this for when 8192 isn't divisible by chunk_len
+        for packet in range(0, 8192/chunk_len):
             chunk = self.device_handle.controlRead(0x40, self.RW_FIRMWARE_REQUEST,
-                                                   packet * 16, self.RW_FIRMWARE_INDEX,
+                                                   packet * chunk_len, self.RW_FIRMWARE_INDEX,
                                                    16, timeout=timeout)
             firmware_chunk_list.append(chunk)
             assert len(chunk) == 16
@@ -170,7 +174,25 @@ class Oscilloscope(object):
                                                         0xe600, self.RW_FIRMWARE_INDEX,
                                                         '\x00', timeout=timeout)
         assert bytes_written == 1
-        return ''.join(firmware_chunk_list)
+        if not to_ihex:
+            return ''.join(firmware_chunk_list)
+        else:
+            lines = []
+            for i, chunk in enumerate(firmware_chunk_list):
+                addr = i*chunk_len
+                iterable_chunk = array.array('B', chunk)
+                hex_data = "".join(["{:02x}".format(b) for b in iterable_chunk])
+                total_sum = (sum(iterable_chunk) + chunk_len + (addr % 256) + (addr >> 8)) % 256
+                checksum = (((0xFF ^ total_sum) & 0xFF) + 0x01) % 256
+                line = ":{nbytes:02x}{addr:04x}{itype:02x}{hex_data}{checksum:02x}".format(nbytes=chunk_len,
+                                                                                           addr=addr,
+                                                                                           itype=0x00,
+                                                                                           hex_data=hex_data,
+                                                                                           checksum=checksum)
+                lines.append(line)
+            # Add stop record at the end.
+            lines.append(":00000001ff")
+            return "\n".join(lines)
 
     def get_calibration_values(self, timeout=0):
         """
