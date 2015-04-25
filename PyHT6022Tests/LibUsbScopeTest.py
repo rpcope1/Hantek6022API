@@ -14,23 +14,23 @@ class BasicTests(TestCase):
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
-        assert scope.flash_firmware(stock_firmware)
+        assert scope.flash_firmware(stock_firmware, supports_single_channel=False)
         assert scope.close_handle()
 
     def test_flash_firmware(self):
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
-        assert scope.flash_firmware(stock_firmware)
+        assert scope.flash_firmware(stock_firmware, supports_single_channel=False)
         assert scope.flash_firmware(mod_firmware_01)
-        assert scope.flash_firmware(stock_firmware)
+        assert scope.flash_firmware(stock_firmware, supports_single_channel=False)
         assert scope.close_handle()
 
     def test_get_cal_values(self):
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
-        assert scope.flash_firmware(stock_firmware)
+        assert scope.flash_firmware(stock_firmware, supports_single_channel=False)
         cal_values = scope.get_calibration_values()
         assert cal_values
         assert scope.close_handle()
@@ -39,7 +39,7 @@ class BasicTests(TestCase):
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
-        assert scope.flash_firmware(stock_firmware)
+        assert scope.flash_firmware(stock_firmware, supports_single_channel=False)
         ch1_data, _ = scope.read_data(data_size=0x400)
         print ch1_data
         assert ch1_data
@@ -49,7 +49,7 @@ class BasicTests(TestCase):
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
-        assert scope.flash_firmware(stock_firmware)
+        assert scope.flash_firmware(stock_firmware, supports_single_channel=False)
         data_size = 0x400
         for _ in xrange(11):
             print "DATA SIZE", data_size
@@ -64,7 +64,7 @@ class BasicTests(TestCase):
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
-        assert scope.flash_firmware(stock_firmware)
+        assert scope.flash_firmware(stock_firmware, supports_single_channel=False)
         for rate_index in scope.SAMPLE_RATES.keys():
             scope.set_sample_rate(rate_index)
         assert scope.close_handle()
@@ -73,7 +73,7 @@ class BasicTests(TestCase):
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
-        assert scope.flash_firmware(stock_firmware)
+        assert scope.flash_firmware(stock_firmware, supports_single_channel=False)
         for vrange in scope.VOLTAGE_RANGES.keys():
             assert scope.set_ch1_voltage_range(vrange)
             assert scope.set_ch1_voltage_range(vrange)
@@ -84,7 +84,7 @@ class BasicTests(TestCase):
         scope = Oscilloscope()
         assert scope.setup()
         assert scope.open_handle()
-        assert scope.flash_firmware(stock_firmware)
+        assert scope.flash_firmware(stock_firmware, supports_single_channel=False)
         assert scope.set_ch1_voltage_range(scale_factor)
         assert scope.set_sample_rate(27)
         ch1_data, _ = scope.read_data(0x100000)

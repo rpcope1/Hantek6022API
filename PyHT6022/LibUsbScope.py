@@ -4,7 +4,7 @@ import time
 import array
 import usb1
 
-from PyHT6022.HantekFirmware import default_firmware
+from PyHT6022.HantekFirmware import default_firmware, fx2_ihex_to_control_packets
 
 
 class Oscilloscope(object):
@@ -54,6 +54,7 @@ class Oscilloscope(object):
         self.device_handle = None
         self.context = None
         self.is_device_firmware_present = False
+        self.supports_single_channel = False
         self.num_channels = 2
         self.scope_id = scope_id
 
@@ -108,11 +109,13 @@ class Oscilloscope(object):
     def __del__(self):
         self.close_handle()
 
-    def flash_firmware(self, firmware=default_firmware, timeout=60):
+    def flash_firmware(self, firmware=default_firmware, supports_single_channel=True, timeout=60):
         """
         Flash scope firmware to the target scope device. This needs to occur once when the device is first attached,
         as the 6022BE does not have any persistant storage.
         :param firmware: (OPTIONAL) The firmware packets to send. Default: Stock firmware.
+        :param supports_single_channel: (OPTIONAL) Set this to false if loading the stock firmware, as it does not
+                                        support reducing the number of active channels.
         :param timeout: (OPTIONAL) A timeout for each packet transfer on the firmware upload. Default: 60 seconds.
         :return: True if the correct device vendor was found after flashing firmware, False if the default Vendor ID
                  was present for the device. May assert or raise various libusb errors if something went wrong.
@@ -128,8 +131,19 @@ class Oscilloscope(object):
         time.sleep(0.1)
         self.close_handle(release_interface=False)
         self.setup()
+        self.supports_single_channel = supports_single_channel
         self.open_handle()
         return self.is_device_firmware_present
+
+    def flash_firmware_from_hex(self, hex_file, timeout=60):
+        """
+        Open an Intel hex file for the 8051 and try to flash it to the scope.
+        :param hex_file: The hex file to load for flashing.
+        :param timeout: (OPTIONAL) A timeout for each packet transfer on the firmware upload. Default: 60 seconds.
+        :return: True if the correct device vendor was found after flashing firmware, False if the default Vendor ID
+                 was present for the device. May assert or raise various libusb errors if something went wrong.
+        """
+        return self.flash_firmware(firmware=fx2_ihex_to_control_packets(hex_file), timeout=timeout)
 
     def read_firmware(self, timeout=60):
         """
@@ -344,15 +358,18 @@ class Oscilloscope(object):
         :param timeout: (OPTIONAL) An additonal multiplictive factor for changing the probe impedance.
         :return: True if successful. This method may assert or raise various libusb errors if something went wrong.
         """
-        assert nchannels == 1 or nchannels == 2
-        if not self.device_handle:
-            assert self.open_handle()
-        bytes_written = self.device_handle.controlWrite(0x40, self.SET_NUMCH_REQUEST,
-                                                        self.SET_NUMCH_VALUE, self.SET_NUMCH_INDEX,
-                                                        chr(nchannels), timeout=timeout)
-        assert bytes_written == 0x01
-        self.num_channels = nchannels
-        return True
+        if self.supports_single_channel:
+            assert nchannels == 1 or nchannels == 2
+            if not self.device_handle:
+                assert self.open_handle()
+            bytes_written = self.device_handle.controlWrite(0x40, self.SET_NUMCH_REQUEST,
+                                                            self.SET_NUMCH_VALUE, self.SET_NUMCH_INDEX,
+                                                            chr(nchannels), timeout=timeout)
+            assert bytes_written == 0x01
+            self.num_channels = nchannels
+            return True
+        else:
+            return False
 
     def set_ch1_voltage_range(self, range_index, timeout=0):
         """
