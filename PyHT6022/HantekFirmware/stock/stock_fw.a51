@@ -1,3 +1,11 @@
+;---------------------------------
+;   Stock 6022BE Firmware
+;   for FX2LP chip (Enhanced 8051)
+;
+;   Disassembled with Dis51
+;
+;---------------------------------
+
 CSEG AT 0000h
 	LJMP L0001
 
