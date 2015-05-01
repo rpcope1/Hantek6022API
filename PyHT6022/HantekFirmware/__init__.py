@@ -35,6 +35,7 @@ def fx2_ihex_to_control_packets(firmware_location):
 base_path = os.path.dirname(os.path.realpath(__file__))
 stock_firmware = fx2_ihex_to_control_packets(os.path.join(base_path, 'stock', 'stock_fw.ihex'))
 mod_firmware_01 = fx2_ihex_to_control_packets(os.path.join(base_path, 'modded', 'mod_fw_01.ihex'))
+mod_firmware_iso = fx2_ihex_to_control_packets(os.path.join(base_path, 'modded', 'mod_fw_iso.ihex'))
 
-default_firmware = mod_firmware_01
+default_firmware = mod_firmware_iso
 

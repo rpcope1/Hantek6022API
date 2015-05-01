@@ -6,15 +6,14 @@ __author__ = 'Robert Cope', 'Jochen Hoenicke'
 from struct import pack
 import sys
 import time
+from collections import deque
 
 from PyHT6022.LibUsbScope import Oscilloscope
 
-voltagerange = 10       # 1 (5V), 2 (2.6V), 5 or 10
-samplerate = 16         # sample rate in MHz or in 10khz
-blocksize = 8*1000*1000 # set to <  8 000 000 for two channels
-                        #        < 16 000 000 for one channel
-                        # must be divisible by 512
-numblocks = 1           # number of blocks to sample
+voltagerange = 10        # 1 (5V), 2 (2.6V), 5 or 10
+samplerate = 24          # sample rate in MHz or in 10khz
+blocksize = 3*1024*24    # must be divisible by 3072
+numblocks = 20           # number of blocks to sample
 numchannels = 1
 
 
@@ -31,7 +30,7 @@ scope.set_ch1_voltage_range(voltagerange)
 # set sample rate
 scope.set_sample_rate(samplerate)
 # we divide by 100 because otherwise audacity lets us not zoom into it
-samplerate = samplerate * 1000 * 10
+samplerate = samplerate * 1000 * 10 *10
 data = []
 total = 0
 
@@ -41,8 +40,25 @@ for x in range(0, 3):
     sys.stdout.flush()
     time.sleep(1)
 print "now"
-for x in range(0, numblocks):
-    data.append(scope.read_data(blocksize, raw=True, clear_fifo=False)[scope_channel-1])
+
+data = deque(maxlen=100*1024*1024)
+data_extend = data.extend
+def extend_callback(ch1_data, _):
+    data_extend(ch1_data)
+
+start_time = time.time()
+print "Clearing FIFO and starting data transfer..."
+scope.clear_fifo()
+shutdown_event = scope.read_async(extend_callback, blocksize, outstanding_iso_transfers=5,raw=True)
+while time.time() - start_time < 2:
+    time.sleep(0.01)
+print "Stopping new transfers."
+shutdown_event.set()
+print "Snooze 5"
+time.sleep(5)
+
+#for x in range(0, numblocks):
+#    data.append(scope.read_data(blocksize, raw=True, clear_fifo=False)[scope_channel-1])
 scope.close_handle()
 rawdata = ''.join(data)
 total = len(rawdata)

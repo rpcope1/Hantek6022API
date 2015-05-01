@@ -32,7 +32,7 @@ def build_stability_array(data, threshold=1.0):
 
 sample_rate_index = 0x1E
 voltage_range = 0x01
-data_points = 0x2000
+data_points = 3 * 1024 * 2
 
 scope = Oscilloscope()
 scope.setup()
@@ -53,7 +53,7 @@ def extend_callback(ch1_data, _):
 start_time = time.time()
 print "Clearing FIFO and starting data transfer..."
 scope.clear_fifo()
-shutdown_event = scope.read_async(extend_callback, data_points, outstanding_bulk_transfers=5)
+shutdown_event = scope.read_async(extend_callback, data_points, outstanding_iso_transfers=5)
 i = 0
 while time.time() - start_time < 1:
     print i

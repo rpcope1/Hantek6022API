@@ -14,6 +14,7 @@ setup(name='Python Hantek 6022BE Wrapper',
       package_data={'PyHT6022': [os.path.join('HantekSDK', 'HTMarch.dll'),
                                  os.path.join('HantekSDK', 'HTDisplayDll.dll'),
                                  os.path.join('HantekFirmware', 'modded', 'mod_fw_01.ihex'),
+                                 os.path.join('HantekFirmware', 'modded', 'mod_fw_iso.ihex'),
                                  os.path.join('HantekFirmware', 'stock', 'stock_fw.ihex'),]},
       include_package_data=True,
       install_requires=['libusb1'])

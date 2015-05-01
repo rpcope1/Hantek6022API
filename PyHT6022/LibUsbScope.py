@@ -353,39 +353,40 @@ class Oscilloscope(object):
             assert False
         return fast_read_data
 
-    def read_async(self, callback, data_size, outstanding_bulk_transfers=3, raw=False):
+    def read_async(self, callback, data_size, outstanding_iso_transfers=3, raw=False):
         array_builder = array.array
         shutdown_event = threading.Event()
         shutdown_is_set = shutdown_event.is_set
         if self.num_channels == 1 and raw:
-            def bulk_tranfer_callback(bulk_transfer):
+            def transfer_callback(iso_transfer):
                 if not shutdown_is_set():
-                    bulk_transfer.submit()
-                data = bulk_transfer.getBuffer()[0:bulk_transfer.getActualLength()]
-                callback(data, '')
+                    iso_transfer.submit()
+                for (status, data) in iso_transfer.iterISO():
+                    callback(data, '')
         elif self.num_channels == 1 and not raw:
-            def bulk_tranfer_callback(bulk_transfer):
+            def transfer_callback(iso_transfer):
                 if not shutdown_is_set():
-                    bulk_transfer.submit()
-                data = bulk_transfer.getBuffer()[0:bulk_transfer.getActualLength()]
-                callback(array_builder('B', data), [])
+                    iso_transfer.submit()
+                for (status, data) in iso_transfer.iterISO():
+                    callback(array_builder('B', data), [])
         elif self.num_channels == 2 and raw:
-            def bulk_tranfer_callback(bulk_transfer):
+            def transfer_callback(iso_transfer):
                 if not shutdown_is_set():
-                    bulk_transfer.submit()
-                data = bulk_transfer.getBuffer()[0:bulk_transfer.getActualLength()]
-                callback(data[::2], data[1::2])
+                    iso_transfer.submit()
+                for (status, data) in iso_transfer.iterISO():
+                    callback(data[::2], data[1::2])
         elif self.num_channels == 2 and not raw:
-            def bulk_tranfer_callback(bulk_transfer):
+            def transfer_callback(iso_transfer):
                 if not shutdown_is_set():
-                    bulk_transfer.submit()
-                data = bulk_transfer.getBuffer()[0:bulk_transfer.getActualLength()]
-                callback(array_builder('B', data[::2]), array_builder('B', data[1::2]))
+                    iso_transfer.submit()
+                for (status, data) in iso_transfer.iterISO():
+                    callback(array_builder('B', data[::2]), array_builder('B', data[1::2]))
         else:
             assert False
-        for _ in xrange(outstanding_bulk_transfers):
-            transfer = self.device_handle.getTransfer()
-            transfer.setBulk(0x86, data_size, callback=bulk_tranfer_callback)
+        packets = data_size/1024/3;
+        for _ in xrange(outstanding_iso_transfers):
+            transfer = self.device_handle.getTransfer(iso_packets=packets)
+            transfer.setIsochronous(0x82, (packets*3*1024), callback=transfer_callback)
             transfer.submit()
         return shutdown_event
 
