@@ -43,11 +43,7 @@ extern void main_init();
 
 void main() {
 
- SETCPUFREQ(CLK_48M); // required for sio0_init 
-#ifdef DEBUG_FIRMWARE
- // main_init can still set this to whatever you want.
- sio0_init(57600); // needed for printf if debug defined 
-#endif
+ SETCPUFREQ(CLK_12M); // save energy
 
  main_init();
 
@@ -63,8 +59,8 @@ void main() {
  EA=1;
 
  // init timer2
-    RCAP2L = -2000 & 0xff;
-    RCAP2H = (-2000 >> 8) & 0xff;
+    RCAP2L = -500 & 0xff;
+    RCAP2H = (-500 >> 8) & 0xff;
     T2CON = 0;
     ET2 = 1;
     TR2 = 1;
@@ -81,12 +77,6 @@ void main() {
     PORTACFG = 0;
     OEC = 0xff;
     OEA = 0x80;
-    PC7 = 0;
-    PC6 = 0;
-    PC5 = 0;
-    PC4 = 0;
-    PC3 = 0;
-    PC2 = 0;
 
  while(TRUE) {
 

@@ -20,7 +20,7 @@ numchannels = 1
 scope = Oscilloscope()
 scope.setup()
 scope.open_handle()
-scope.flash_firmware()
+scope.flash_firmware_from_hex('../PyHT6022/HantekFirmware/custom/build/firmware.ihx')
 scope_channel = 1
 print "Setting up scope!"
 
@@ -48,6 +48,7 @@ def extend_callback(ch1_data, _):
 
 start_time = time.time()
 print "Clearing FIFO and starting data transfer..."
+scope.set_interface(1); # choose ISO
 scope.clear_fifo()
 shutdown_event = scope.read_async(extend_callback, blocksize, outstanding_iso_transfers=5,raw=True)
 while time.time() - start_time < 2:

@@ -353,6 +353,11 @@ class Oscilloscope(object):
             assert False
         return fast_read_data
 
+    def set_interface(self, alt):
+        if not self.device_handle:
+            assert self.open_handle()
+        self.device_handle.setInterfaceAltSetting(0, alt);
+
     def read_async(self, callback, data_size, outstanding_iso_transfers=3, raw=False):
         array_builder = array.array
         shutdown_event = threading.Event()

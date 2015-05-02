@@ -18,6 +18,7 @@
  **/
 
 #include <fx2macros.h>
+#include <delay.h>
 
 #ifdef DEBUG_FIRMWARE
 #include <stdio.h>
@@ -25,13 +26,16 @@
 #define printf(...)
 #endif
 
+// change to support as many interfaces as you need
+volatile BYTE altiface=0; // alt interface
+
 
 
 
 BOOL set_voltage(BYTE channel, BYTE val)
 {
-    const BYTE val2bits[] = { 1, 0x24*4, 0x24*2, 1, 1, 0x24*0, 
-			      1, 1, 1, 1, 0x24*6 };
+    const BYTE val2bits[] = { 1, 0x24*2, 0x24*1, 1, 1, 0x24*0, 
+			      1, 1, 1, 1, 0x24*3 };
     BYTE bits = val < 11 ? val2bits[val] : -1;
     if (bits != 1) {
 	int mask = channel ? 0xe0 : 0x1c;
@@ -43,13 +47,69 @@ BOOL set_voltage(BYTE channel, BYTE val)
 
 BOOL set_numchannels(BYTE numchannels)
 {
-    if (numchannels >=1 && numchannels <= 2) {
+    if (numchannels >= 1 && numchannels <= 2) {
 	BYTE fifocfg = 7 + numchannels;
 	EP2FIFOCFG = fifocfg;
 	EP6FIFOCFG = fifocfg;
 	return TRUE;
     }
     return FALSE;
+}
+
+void clear_fifo()
+{
+    GPIFABORT = 0xff;
+    SYNCDELAY3;
+    FIFORESET = 0x80;
+    SYNCDELAY3;
+    FIFORESET = 0x82;
+    SYNCDELAY3;
+    FIFORESET = 0x86;
+    SYNCDELAY3;
+    FIFORESET = 0;
+}
+
+void start_sampling()
+{
+    int i;
+    clear_fifo();
+
+    for (i = 0; i < 1000; i++);
+    while (!(GPIFTRIG & 0x80)) {
+	;
+    }
+    SYNCDELAY3;
+    GPIFTCB1 = 0x28;
+    SYNCDELAY3;
+    GPIFTCB0 = 0;
+    if (altiface == 0)
+	GPIFTRIG = 6;
+    else
+	GPIFTRIG = 4;
+}
+
+void select_interface(int alt)
+{
+    if (alt == 0) {
+	// bulk on port 6
+	// TODO: packet size for full speed
+	EP2CFG = 0x00;
+	EP6CFG = 0xe0;
+	EP6GPIFFLGSEL = 1;
+	EP6AUTOINLENH = 512/256;
+	EP6AUTOINLENL = 512%256;
+    } else {
+	// iso on port 2
+	// Todo set right packet size, isoinpkts etc.
+	EP2CFG = 0xd8;
+	EP6CFG = 0x00;
+	EP2ISOINPKTS = 3;
+	EP2AUTOINLENH = 1024/256;
+	EP2AUTOINLENL = 1024%256;
+	EP2FIFOCFG = 8;
+	EP2GPIFFLGSEL = 1;
+    }
+    clear_fifo();
 }
 
 struct samplerate_info {
@@ -79,7 +139,6 @@ BOOL set_samplerate(BYTE rate)
     int i;
     for (i = 0; i < sizeof(samplerates)/sizeof(samplerates[0]); i++) {
 	if (samplerates[i].rate == rate) {
-	    BYTE* data;
 	    IFCONFIG = samplerates[i].ifcfg;
 	    GPIFABORT = 0xff;
 	    GPIFREADYCFG = 0xc0;
@@ -89,22 +148,48 @@ BOOL set_samplerate(BYTE rate)
 	    GPIFWFSELECT = 0x00;
 	    GPIFREADYSTAT = 0x00;
 
-	    data = &GPIF_WAVE_DATA + 0;
-	    *data++ = samplerates[i].wait0;
-	    *data++ = samplerates[i].wait1;
-	    *data++ = samplerates[i].jump;
-	    data += 5;
-	    *data++ = 1;
-	    *data++ = 2;
-	    *data++ = samplerates[i].jopcode;
-	    data += 5;
-	    *data++ = 0xff;
-	    *data++ = samplerates[i].jopcode == 3 ? 0xff : 0xfb;
-	    *data++ = 0xff;
-	    data += 5;
-	    *data++ = 0x0;
-	    *data++ = 0x0;
-	    *data++ = 0x12;
+	    AUTOPTRSETUP = 7;
+	    AUTOPTRH2 = 0xE4;
+	    AUTOPTRL2 = 0x00;
+
+	    EXTAUTODAT2 = samplerates[i].wait0;
+	    EXTAUTODAT2 = samplerates[i].wait1;
+	    EXTAUTODAT2 = samplerates[i].jump;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 2;
+	    EXTAUTODAT2 = samplerates[i].jopcode;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+
+	    EXTAUTODAT2 = 0xff;
+	    EXTAUTODAT2 = samplerates[i].jopcode == 3 ? 0xff : 0xfb;
+	    EXTAUTODAT2 = 0xff;
+	    EXTAUTODAT2 = 0xff;
+	    EXTAUTODAT2 = 0xff;
+	    EXTAUTODAT2 = 0xff;
+	    EXTAUTODAT2 = 0xff;
+	    EXTAUTODAT2 = 0xff;
+
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0x12;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+	    EXTAUTODAT2 = 0;
+
+	    for (i = 0; i < 96; i++)
+		EXTAUTODAT2 = 0;
 	    return TRUE;
 	}
     }
@@ -117,12 +202,9 @@ BOOL handle_get_descriptor() {
 
 //************************** Configuration Handlers *****************************
 
-// change to support as many interfaces as you need
-volatile BYTE alt=0; // alt interface
-
 // set *alt_ifc to the current alt interface for ifc
 BOOL handle_get_interface(BYTE ifc, BYTE* alt_ifc) {
-    *alt_ifc=alt;
+    *alt_ifc=altiface;
     return TRUE;
 }
 // return TRUE if you set the interface requested
@@ -131,8 +213,8 @@ BOOL handle_get_interface(BYTE ifc, BYTE* alt_ifc) {
 BOOL handle_set_interface(BYTE ifc,BYTE alt_ifc) {  
     printf ( "Set Interface.\n" );
     if (ifc == 0) {
-      alt = alt_ifc;
-    //    select_interface(ifc);
+      altiface = alt_ifc;
+      select_interface(alt_ifc);
     }
     return TRUE;
 }
@@ -161,22 +243,24 @@ extern volatile __bit active;
 BOOL handle_vendorcommand(BYTE cmd) {
     active = 1;
     switch (cmd) {
-    case 0xa0:
-	// handled by EZ-USB
-	return TRUE;
-
     case 0xe0:
     case 0xe1:
+	EP0BCH=0;
+	EP0BCL=0;
 	while (EP0CS & bmEPBUSY);
 	set_voltage(cmd - 0xe0, EP0BUF[0]);
-	EP0BCH=0;
-	EP0BCL=0;
 	return TRUE;
     case 0xe2:
-	while (EP0CS & bmEPBUSY);
-	set_samplerate(EP0BUF[0]);
 	EP0BCH=0;
 	EP0BCL=0;
+	while (EP0CS & bmEPBUSY);
+	set_samplerate(EP0BUF[0]);
+	return TRUE;
+    case 0xe3:
+	EP0BCH=0;
+	EP0BCL=0;
+	while (EP0CS & bmEPBUSY);
+	start_sampling();
 	return TRUE;
     case 0xe4:
 	while (EP0CS & bmEPBUSY);
@@ -191,10 +275,6 @@ BOOL handle_vendorcommand(BYTE cmd) {
 //********************  INIT ***********************
 
 void main_init() {
-
-    REVCTL=3;
-    SETIF48MHZ();
-
     EP4CFG = 0;
     EP8CFG = 0;
 
@@ -202,6 +282,7 @@ void main_init() {
     set_voltage(1, 1);
     set_samplerate(1);
     set_numchannels(1);
+    select_interface(0);
 
     printf ( "Initialization Done.\n" );
 }
