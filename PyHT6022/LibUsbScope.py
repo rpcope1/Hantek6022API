@@ -3,6 +3,7 @@ __author__ = 'Robert Cope', 'Jochen Hoenicke'
 import time
 import array
 import usb1
+import libusb1
 import select
 import threading
 
@@ -98,6 +99,7 @@ class Oscilloscope(object):
         self.device_handle.claimInterface(0)
         if self.is_device_firmware_present:
             self.set_num_channels(2)
+            self.set_interface(0)
         return True
 
     def close_handle(self, release_interface=True):
@@ -154,7 +156,7 @@ class Oscilloscope(object):
         """
         return self.flash_firmware(firmware=fx2_ihex_to_control_packets(hex_file), timeout=timeout)
 
-    def read_firmware(self, to_ihex=True, chunk_len=16, timeout=60):
+    def read_firmware(self, address=0, length=8192, to_ihex=True, chunk_len=16, timeout=60):
         """
         Read the entire device RAM, and return a raw string.
         :param to_ihex: (OPTIONAL) Convert the firmware into the Intel hex format after reading. Otherwise, return
@@ -173,12 +175,12 @@ class Oscilloscope(object):
         assert bytes_written == 1
         firmware_chunk_list = []
         # TODO: Fix this for when 8192 isn't divisible by chunk_len
-        for packet in range(0, 8192/chunk_len):
+        for packet in range(0, length/chunk_len):
             chunk = self.device_handle.controlRead(0x40, self.RW_FIRMWARE_REQUEST,
-                                                   packet * chunk_len, self.RW_FIRMWARE_INDEX,
-                                                   16, timeout=timeout)
+                                                   address + packet * chunk_len, self.RW_FIRMWARE_INDEX,
+                                                   chunk_len, timeout=timeout)
             firmware_chunk_list.append(chunk)
-            assert len(chunk) == 16
+            assert len(chunk) == chunk_len
         bytes_written = self.device_handle.controlWrite(0x40, self.RW_FIRMWARE_REQUEST,
                                                         0xe600, self.RW_FIRMWARE_INDEX,
                                                         '\x00', timeout=timeout)
@@ -188,7 +190,7 @@ class Oscilloscope(object):
         else:
             lines = []
             for i, chunk in enumerate(firmware_chunk_list):
-                addr = i*chunk_len
+                addr = address + i*chunk_len
                 iterable_chunk = array.array('B', chunk)
                 hex_data = "".join(["{:02x}".format(b) for b in iterable_chunk])
                 total_sum = (sum(iterable_chunk) + chunk_len + (addr % 256) + (addr >> 8)) % 256
@@ -342,8 +344,14 @@ class Oscilloscope(object):
         if not self.device_handle:
             assert self.open_handle()
         self.device_handle.setInterfaceAltSetting(0, alt);
+        endpoint_info = self.device[0][0][alt][0];
+        self.is_iso = ((endpoint_info.getAttributes() & 
+                        libusb1.LIBUSB_TRANSFER_TYPE_MASK)
+                       == libusb1.LIBUSB_TRANSFER_TYPE_ISOCHRONOUS);
+        maxpacketsize = endpoint_info.getMaxPacketSize();
+        self.packetsize = ((maxpacketsize >> 11)+1) * (maxpacketsize & 0x7ff);
 
-    def read_async(self, callback, data_size, outstanding_iso_transfers=3, raw=False):
+    def read_async_iso(self, callback, packets, outstanding_transfers, raw):
         array_builder = array.array
         shutdown_event = threading.Event()
         shutdown_is_set = shutdown_event.is_set
@@ -373,13 +381,55 @@ class Oscilloscope(object):
                     iso_transfer.submit()
         else:
             assert False
-        packets = data_size/1024/3;
-        for _ in xrange(outstanding_iso_transfers):
+        for _ in xrange(outstanding_transfers):
             transfer = self.device_handle.getTransfer(iso_packets=packets)
-            transfer.setIsochronous(0x82, (packets*3*1024), callback=transfer_callback)
+            transfer.setIsochronous(0x82, (packets*self.packetsize), callback=transfer_callback)
             transfer.submit()
         return shutdown_event
 
+    def read_async_bulk(self, callback, packets, outstanding_transfers, raw):
+        array_builder = array.array
+        shutdown_event = threading.Event()
+        shutdown_is_set = shutdown_event.is_set
+        if self.num_channels == 1 and raw:
+            def transfer_callback(bulk_transfer):
+                data = bulk_transfer.getBuffer()[0:bulk_transfer.getActualLength()]
+                callback(data, '')
+                if not shutdown_is_set():
+                    bulk_transfer.submit()
+        elif self.num_channels == 1 and not raw:
+            def transfer_callback(bulk_transfer):
+                data = bulk_transfer.getBuffer()[0:bulk_transfer.getActualLength()]
+                callback(array_builder('B', data), [])
+                if not shutdown_is_set():
+                    bulk_transfer.submit()
+        elif self.num_channels == 2 and raw:
+            def transfer_callback(bulk_transfer):
+                data = bulk_transfer.getBuffer()[0:bulk_transfer.getActualLength()]
+                callback(data[::2], data[1::2])
+                if not shutdown_is_set():
+                    bulk_transfer.submit()
+        elif self.num_channels == 2 and not raw:
+            def transfer_callback(bulk_transfer):
+                data = bulk_transfer.getBuffer()[0:bulk_transfer.getActualLength()]
+                callback(array_builder('B', data[::2]), array_builder('B', data[1::2]))
+                if not shutdown_is_set():
+                    bulk_transfer.submit()
+        else:
+            assert False
+        for _ in xrange(outstanding_transfers):
+            transfer = self.device_handle.getTransfer(iso_packets=packets)
+            transfer.setBulk(0x86, (packets*self.packetsize), callback=transfer_callback)
+            transfer.submit()
+        return shutdown_event
+
+    def read_async(self, callback, data_size, outstanding_transfers=3, raw=False):
+        # data_size to packets
+        packets = (data_size + self.packetsize-1)/self.packetsize
+        if self.is_iso:
+            return self.read_async_iso(callback, packets, outstanding_transfers, raw)
+        else:
+            return self.read_async_bulk(callback, packets, outstanding_transfers, raw)
 
     @staticmethod
     def scale_read_data(read_data, voltage_range, probe_multiplier=1):

@@ -10,22 +10,23 @@ from collections import deque
 
 from PyHT6022.LibUsbScope import Oscilloscope
 
-voltagerange = 10        # 1 (5V), 2 (2.6V), 5 or 10
-samplerate = 24          # sample rate in MHz or in 10khz
-blocksize = 3*1024*24    # must be divisible by 3072
-numblocks = 20           # number of blocks to sample
+voltagerange = 10       # 1 (5V), 2 (2.6V), 5 or 10
+samplerate = 8          # sample rate in MHz or in 10khz
 numchannels = 1
-
+numseconds = 2          # number of seconds to sample
+blocksize = 10*6*1024   # should be divisible by 6*1024
+alternative = 0         # choose ISO 3072 bytes per 125 us
 
 scope = Oscilloscope()
 scope.setup()
 scope.open_handle()
-if (not scope.is_device_firmware_present):
-    scope.flash_firmware()
+#if (not scope.is_device_firmware_present):
+scope.flash_firmware()
 scope_channel = 1
 print "Setting up scope!"
 
-scope.set_interface(1); # choose ISO
+scope.set_interface(alternative);
+print "ISO" if scope.is_iso else "BULK", "packet size:", scope.packetsize
 scope.set_num_channels(numchannels)
 # set voltage range
 scope.set_ch1_voltage_range(voltagerange)
@@ -50,14 +51,14 @@ def extend_callback(ch1_data, _):
 
 start_time = time.time()
 print "Clearing FIFO and starting data transfer..."
-shutdown_event = scope.read_async(extend_callback, blocksize, outstanding_iso_transfers=5,raw=True)
+shutdown_event = scope.read_async(extend_callback, blocksize, outstanding_transfers=10,raw=True)
 scope.start_capture()
-while time.time() - start_time < 2:
+while time.time() - start_time < numseconds:
     time.sleep(0.01)
-scope.stop_capture()
 print "Stopping new transfers."
 shutdown_event.set()
 time.sleep(1)
+scope.stop_capture()
 scope.close_handle()
 rawdata = ''.join(data)
 total = len(rawdata)

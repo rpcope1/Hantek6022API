@@ -27,7 +27,7 @@
 #endif
 
 // change to support as many interfaces as you need
-volatile BYTE altiface=0; // alt interface
+BYTE altiface = 0; // alt interface
 extern volatile WORD ledcounter;
 
 
@@ -48,7 +48,7 @@ BOOL set_voltage(BYTE channel, BYTE val)
 
 BOOL set_numchannels(BYTE numchannels)
 {
-    if (numchannels >= 1 && numchannels <= 2) {
+    if (numchannels == 1 || numchannels == 2) {
 	BYTE fifocfg = 7 + numchannels;
 	EP2FIFOCFG = fifocfg;
 	EP6FIFOCFG = fifocfg;
@@ -75,9 +75,9 @@ void stop_sampling()
     GPIFABORT = 0xff;
     SYNCDELAY3;
     if (altiface == 0) {
-	OUTPKTEND = 6;
+	INPKTEND = 6;
     } else {
-	OUTPKTEND = 2;
+	INPKTEND = 2;
     }
 }
 
@@ -106,31 +106,34 @@ void start_sampling()
     PC1 = 0;
 }
 
-void select_interface(int alt)
+extern __code BYTE highspd_dscr;
+extern __code BYTE fullspd_dscr;
+void select_interface(BYTE alt)
 {
+    BYTE *pPacketSize = (USBCS & bmHSM ? &highspd_dscr : &fullspd_dscr)
+	+ 9 + 16*alt + 9 + 4;
     if (alt == 0) {
 	// bulk on port 6
 	// TODO: packet size for full speed
 	EP2CFG = 0x00;
 	EP6CFG = 0xe0;
 	EP6GPIFFLGSEL = 1;
-	EP6AUTOINLENH = 512/256;
-	EP6AUTOINLENL = 512%256;
+
+	EP6AUTOINLENL = pPacketSize[0];
+	EP6AUTOINLENH = pPacketSize[1];
     } else {
 	// iso on port 2
-	// Todo set right packet size, isoinpkts etc.
 	EP2CFG = 0xd8;
 	EP6CFG = 0x00;
-	EP2ISOINPKTS = 3;
-	EP2AUTOINLENH = 1024/256;
-	EP2AUTOINLENL = 1024%256;
-	EP2FIFOCFG = 8;
 	EP2GPIFFLGSEL = 1;
+
+	EP2AUTOINLENL = pPacketSize[0];
+	EP2AUTOINLENH = pPacketSize[1] & 0x7;
+	EP2ISOINPKTS = (pPacketSize[1] >> 3) + 1;
     }
-    clear_fifo();
 }
 
-struct samplerate_info {
+const struct samplerate_info {
     BYTE rate;
     BYTE wait0;
     BYTE wait1;
@@ -154,7 +157,7 @@ struct samplerate_info {
 
 BOOL set_samplerate(BYTE rate)
 {
-    int i;
+    BYTE i;
     for (i = 0; i < sizeof(samplerates)/sizeof(samplerates[0]); i++) {
 	if (samplerates[i].rate == rate) {
 	    IFCONFIG = samplerates[i].ifcfg;
@@ -222,6 +225,7 @@ BOOL handle_get_descriptor() {
 
 // set *alt_ifc to the current alt interface for ifc
 BOOL handle_get_interface(BYTE ifc, BYTE* alt_ifc) {
+    (void) ifc; // ignore unused parameter
     *alt_ifc=altiface;
     return TRUE;
 }
@@ -238,18 +242,13 @@ BOOL handle_set_interface(BYTE ifc,BYTE alt_ifc) {
 }
 
 // handle getting and setting the configuration
-// 1 is the default.  If you support more than one config
-// keep track of the config number and return the correct number
-// config numbers are set int the dscr file.
-volatile BYTE config=1;
+// 1 is the default.  We don't support multiple configurations.
 BYTE handle_get_configuration() { 
-    return config;
+    return 0;
 }
 
-// NOTE changing config requires the device to reset all the endpoints
 BOOL handle_set_configuration(BYTE cfg) { 
-    printf ( "Set Configuration.\n" );
-    config=cfg;
+    //    handle_set_interface(cfg, 0);
     return TRUE;
 }
 
@@ -284,10 +283,10 @@ BOOL handle_vendorcommand(BYTE cmd) {
 	    start_sampling();
 	return TRUE;
     case 0xe4:
-	while (EP0CS & bmEPBUSY);
-	set_numchannels(EP0BUF[0]);
 	EP0BCH=0;
 	EP0BCL=0;
+	while (EP0CS & bmEPBUSY);
+	set_numchannels(EP0BUF[0]);
 	return TRUE;
     }
     return FALSE; // not handled by handlers
@@ -302,7 +301,7 @@ void main_init() {
     set_voltage(0, 1);
     set_voltage(1, 1);
     set_samplerate(1);
-    set_numchannels(1);
+    set_numchannels(2);
     select_interface(0);
 
     printf ( "Initialization Done.\n" );
