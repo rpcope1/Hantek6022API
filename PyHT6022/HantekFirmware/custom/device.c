@@ -35,15 +35,27 @@ extern volatile WORD ledcounter;
 
 BOOL set_voltage(BYTE channel, BYTE val)
 {
-    const static BYTE val2bits[] = { 1, 0x24*2, 0x24*1, 1, 1, 0x24*0,
-			      1, 1, 1, 1, 0x24*3 };
-    BYTE bits = val < 11 ? val2bits[val] : -1;
-    if (bits != 1) {
-	int mask = channel ? 0xe0 : 0x1c;
-	IOC = (IOC & ~mask) | (bits & mask);
-	return TRUE;
+    BYTE bits, mask;
+    switch (val) {
+    case 1:
+	bits = 0x24 * 2;
+	break;
+    case 2:
+	bits = 0x24 * 1;
+	break;
+    case 5:
+	bits = 0x24 * 0;
+	break;
+    case 10:
+	bits = 0x24 * 3;
+	break;
+    default:
+	return FALSE;
     }
-    return FALSE;
+
+    mask = channel ? 0xe0 : 0x1c;
+    IOC = (IOC & ~mask) | (bits & mask);
+    return TRUE;
 }
 
 BOOL set_numchannels(BYTE numchannels)
