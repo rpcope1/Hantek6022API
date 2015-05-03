@@ -7,6 +7,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from collections import deque
 from scope_proc import ScopeReaderInterface
+import array
+
 import time
 
 try:
@@ -16,6 +18,8 @@ except ImportError:
 
 
 from PyHT6022.LibUsbScope import Oscilloscope
+
+UPDATE_RATE_MS = 80
 
 
 class ScopeApp(Tk.Tk):
@@ -94,17 +98,17 @@ class ScopeApp(Tk.Tk):
 
         def update_plot():
             if data_queue:
-                y_data = self.scope.scale_read_data(data_queue.pop(), 0x01)
+                y_data = self.scope.scale_read_data(array.array('B', data_queue.pop()), 0x01)
                 x_data = self.scope.convert_sampling_rate_to_measurement_times(len(y_data),
                                                                                self.sample_rate_var.get())[0]
                 plot_line.set_data(x_data, y_data)
                 self.plot_axis.set_xlim(min(x_data), max(x_data))
                 self.plot_canvas.show()
             if self.shutdown_event and not self.shutdown_event.is_set():
-                self.after(30, update_plot)
+                self.after(UPDATE_RATE_MS, update_plot)
             return plot_line,
 
-        self.after(30, update_plot)
+        self.after(UPDATE_RATE_MS, update_plot)
         self.plot_updater = update_plot
 
     def stop_data_collection(self):

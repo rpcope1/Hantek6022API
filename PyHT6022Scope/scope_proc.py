@@ -16,12 +16,13 @@ def data_collection_proc_target(trigger_pipe, shutdown_event, data_points=0x2000
     send_to_trigger = trigger_pipe.send
 
     def punt_to_pipe(ch1_data, ch2_data):
-        send_to_trigger((ch1_data, ch2_data))
+        send_to_trigger(ch1_data)
+        send_to_trigger(ch2_data)
     callback_shutdown_event = scope.read_async(punt_to_pipe, data_points,
-                                               outstanding_bulk_transfers=max_transfers_queued)
+                                               outstanding_bulk_transfers=max_transfers_queued,
+                                               raw=True)
     while not shutdown_event.is_set():
         time.sleep(poll_interval)
-
     callback_shutdown_event.set()
     scope.close_handle()
     trigger_pipe.close()
@@ -32,17 +33,18 @@ def data_trigger_rising_edge_proc_target(reader_in_pipe, trigger_out_pipe, shutd
     assert trigger_ch in [1, 2]
     trigger_ch -= 1
 
-    last_data_ch1 = []
+    last_data_ch1 = ""
     last_data_len = 0
-    last_data_ch2 = []
+    last_data_ch2 = ""
 
     trigger_next_iter = False
     last_trigger_loc = 0
     recv_from_pipe = reader_in_pipe.recv
     send_to_pipe = trigger_out_pipe.send
+    shutdown_event_is_set = shutdown_event.is_set
 
-    while not shutdown_event.is_set():
-        ch1_data, ch2_data = channel_data = [list(data) for data in recv_from_pipe()]
+    while not shutdown_event_is_set():
+        ch1_data, ch2_data = channel_data = recv_from_pipe(), recv_from_pipe()
         data_len = len(ch1_data)
 
         if trigger_next_iter:
@@ -53,9 +55,10 @@ def data_trigger_rising_edge_proc_target(reader_in_pipe, trigger_out_pipe, shutd
         trigger_loc = None
 
         for i, point in enumerate(channel_data[trigger_ch]):
-            if init and point < raw_threshold:
+            point_ord = ord(point)
+            if init and point_ord < raw_threshold:
                 init = False
-            if not init and point > raw_threshold:
+            if not init and point_ord > raw_threshold:
                 trigger_loc = i
                 break
         if trigger_loc is not None:
