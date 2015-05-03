@@ -16,4 +16,4 @@ setup(name='Python Hantek 6022BE Wrapper',
                                  os.path.join('HantekFirmware', 'modded', 'mod_fw_01.ihex'),
                                  os.path.join('HantekFirmware', 'stock', 'stock_fw.ihex'),]},
       include_package_data=True,
-      install_requires=['libusb1'])
+      install_requires=['libusb1', 'matplotlib'])
