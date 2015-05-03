@@ -11,17 +11,17 @@ from collections import deque
 from PyHT6022.LibUsbScope import Oscilloscope
 
 voltagerange = 10       # 1 (5V), 2 (2.6V), 5 or 10
-samplerate = 8          # sample rate in MHz or in 10khz
+samplerate = 24          # sample rate in MHz or in 10khz
 numchannels = 1
 numseconds = 2          # number of seconds to sample
-blocksize = 10*6*1024   # should be divisible by 6*1024
-alternative = 0         # choose ISO 3072 bytes per 125 us
+blocksize = 6*1024      # should be divisible by 6*1024
+alternative = 1         # choose ISO 3072 bytes per 125 us
 
 scope = Oscilloscope()
 scope.setup()
 scope.open_handle()
-#if (not scope.is_device_firmware_present):
-scope.flash_firmware()
+if (not scope.is_device_firmware_present):
+    scope.flash_firmware()
 scope_channel = 1
 print "Setting up scope!"
 
@@ -56,9 +56,9 @@ scope.start_capture()
 while time.time() - start_time < numseconds:
     time.sleep(0.01)
 print "Stopping new transfers."
+scope.stop_capture()
 shutdown_event.set()
 time.sleep(1)
-scope.stop_capture()
 scope.close_handle()
 rawdata = ''.join(data)
 total = len(rawdata)
