@@ -28,6 +28,7 @@
 
 // change to support as many interfaces as you need
 volatile BYTE altiface=0; // alt interface
+extern volatile WORD ledcounter;
 
 
 
@@ -69,6 +70,17 @@ void clear_fifo()
     FIFORESET = 0;
 }
 
+void stop_sampling()
+{
+    GPIFABORT = 0xff;
+    SYNCDELAY3;
+    if (altiface == 0) {
+	OUTPKTEND = 6;
+    } else {
+	OUTPKTEND = 2;
+    }
+}
+
 void start_sampling()
 {
     int i;
@@ -86,6 +98,12 @@ void start_sampling()
 	GPIFTRIG = 6;
     else
 	GPIFTRIG = 4;
+
+    // set green led
+    // don't clear led
+    ledcounter = 0;
+    PC0 = 1;
+    PC1 = 0;
 }
 
 void select_interface(int alt)
@@ -238,10 +256,12 @@ BOOL handle_set_configuration(BYTE cfg) {
 
 //******************* VENDOR COMMAND HANDLERS **************************
 
-extern volatile __bit active;
-
 BOOL handle_vendorcommand(BYTE cmd) {
-    active = 1;
+    stop_sampling();
+    // Set Red LED
+    PC0 = 0;
+    PC1 = 1;
+    ledcounter = 1000;
     switch (cmd) {
     case 0xe0:
     case 0xe1:
@@ -260,7 +280,8 @@ BOOL handle_vendorcommand(BYTE cmd) {
 	EP0BCH=0;
 	EP0BCL=0;
 	while (EP0CS & bmEPBUSY);
-	start_sampling();
+	if (EP0BUF[0] == 1)
+	    start_sampling();
 	return TRUE;
     case 0xe4:
 	while (EP0CS & bmEPBUSY);

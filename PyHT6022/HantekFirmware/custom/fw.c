@@ -30,7 +30,6 @@
 #define printf(...)
 #endif
 
-volatile __bit active;
 volatile WORD ledcounter = 0;
 
 
@@ -145,16 +144,12 @@ void suspend_isr() __interrupt SUSPEND_ISR {
 
 void timer2_isr() __interrupt TF2_ISR {
   PA7 = !PA7;
-  if (ledcounter-- == 0) {
-    if (active) {
-      active = 0;
-      PC1 = !PC1; // toggle green led
-      PC0 = 1;    // clear red led
-    } else {
-      PC0 = !PC0; // toggle red led
-      PC1 = 1;    // clear green led
+  if (ledcounter) {
+    if (--ledcounter == 0) {
+      // clear LED
+      PC0 = 1;
+      PC1 = 1;
     }
-    ledcounter = 1000;
   }
   TF2 = 0;
 }

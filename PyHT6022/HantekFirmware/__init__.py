@@ -12,7 +12,6 @@ FirmwareControlPacket = namedtuple('FirmwareControlPacket', ['size', 'value', 'd
 def fx2_ihex_to_control_packets(firmware_location):
     packets = []
     # disable 8051
-    packets.append(FirmwareControlPacket(1, 0x7f92, '\x01'))
     packets.append(FirmwareControlPacket(1, 0xe600, '\x01'))
     with open(firmware_location, 'r') as f:
         for line in f.readlines():
@@ -35,7 +34,6 @@ def fx2_ihex_to_control_packets(firmware_location):
             else:
                 raise ValueError('Unknown record type 0x{:2x} encountered!'.format(record_type))
     # enable 8051
-    packets.append(FirmwareControlPacket(1, 0x7f92, '\x00'))
     packets.append(FirmwareControlPacket(1, 0xe600, '\x00'))
     return packets
 
@@ -43,6 +41,7 @@ base_path = os.path.dirname(os.path.realpath(__file__))
 stock_firmware = fx2_ihex_to_control_packets(os.path.join(base_path, 'stock', 'stock_fw.ihex'))
 mod_firmware_01 = fx2_ihex_to_control_packets(os.path.join(base_path, 'modded', 'mod_fw_01.ihex'))
 mod_firmware_iso = fx2_ihex_to_control_packets(os.path.join(base_path, 'modded', 'mod_fw_iso.ihex'))
+custom_firmware = fx2_ihex_to_control_packets(os.path.join(base_path, 'custom', 'build', 'firmware.ihx'))
 
-default_firmware = mod_firmware_iso
+default_firmware = custom_firmware
 
