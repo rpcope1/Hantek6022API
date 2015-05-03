@@ -85,8 +85,7 @@ class ScopeApp(Tk.Tk):
         self.scope.set_ch1_voltage_range(0x01)
         self.plot_axis.set_ylim([-5.0, 5.0])
         ch1_adc_threshold = self.scope.voltage_to_adc(self.trigger_level_var.get(), 0x01)
-        self.scope_reader_interface = ScopeReaderInterface(ch2_trigger_func=None,
-                                                           ch1_threshold=ch1_adc_threshold)
+        self.scope_reader_interface = ScopeReaderInterface(trigger_threshold=ch1_adc_threshold)
         self.scope.clear_fifo()
         self.scope.close_handle()
         time.sleep(0.1)
@@ -96,7 +95,8 @@ class ScopeApp(Tk.Tk):
         def update_plot():
             if data_queue:
                 y_data = self.scope.scale_read_data(data_queue.pop(), 0x01)
-                x_data = self.scope.convert_sampling_rate_to_measurement_times(len(y_data), self.sample_rate_var.get())[0]
+                x_data = self.scope.convert_sampling_rate_to_measurement_times(len(y_data),
+                                                                               self.sample_rate_var.get())[0]
                 plot_line.set_data(x_data, y_data)
                 self.plot_axis.set_xlim(min(x_data), max(x_data))
                 self.plot_canvas.show()
