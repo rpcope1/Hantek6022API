@@ -53,7 +53,7 @@ def extend_callback(ch1_data, _):
     data_extend(ch1_data)
 
 start_time = time.time()
-shutdown_event = scope.read_async(extend_callback, data_points, outstanding_iso_transfers=25)
+shutdown_event = scope.read_async(extend_callback, data_points, outstanding_transfers=25)
 print "Clearing FIFO and starting data transfer..."
 i = 0
 scope.start_capture()

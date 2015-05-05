@@ -11,29 +11,31 @@ from collections import deque
 from PyHT6022.LibUsbScope import Oscilloscope
 
 voltagerange = 10       # 1 (5V), 2 (2.6V), 5 or 10
-samplerate = 24          # sample rate in MHz or in 10khz
+samplerate = 24         # sample rate in MHz or in 10khz
 numchannels = 1
 numseconds = 2          # number of seconds to sample
 blocksize = 6*1024      # should be divisible by 6*1024
-alternative = 1         # choose ISO 3072 bytes per 125 us
+alternative = 0         # choose ISO 3072 bytes per 125 us
 
 scope = Oscilloscope()
 scope.setup()
 scope.open_handle()
+scope.flash_firmware()
 if (not scope.is_device_firmware_present):
     scope.flash_firmware()
-scope_channel = 1
+else:
+    scope.supports_single_channel = True;
 print "Setting up scope!"
 
 scope.set_interface(alternative);
 print "ISO" if scope.is_iso else "BULK", "packet size:", scope.packetsize
-scope.set_num_channels(numchannels)
+print scope.set_num_channels(numchannels)
 # set voltage range
 scope.set_ch1_voltage_range(voltagerange)
 # set sample rate
 scope.set_sample_rate(samplerate)
 # we divide by 100 because otherwise audacity lets us not zoom into it
-samplerate = samplerate * 1000 * 10 *10
+samplerate = samplerate * 1000 * 10
 data = []
 total = 0
 
@@ -56,9 +58,10 @@ scope.start_capture()
 while time.time() - start_time < numseconds:
     time.sleep(0.01)
 print "Stopping new transfers."
-scope.stop_capture()
+#scope.stop_capture()
 shutdown_event.set()
 time.sleep(1)
+scope.stop_capture()
 scope.close_handle()
 rawdata = ''.join(data)
 total = len(rawdata)

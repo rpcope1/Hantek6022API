@@ -122,8 +122,8 @@ extern __code BYTE highspd_dscr;
 extern __code BYTE fullspd_dscr;
 void select_interface(BYTE alt)
 {
-    BYTE *pPacketSize = (USBCS & bmHSM ? &highspd_dscr : &fullspd_dscr)
-	+ 9 + 16*alt + 9 + 4;
+    const BYTE *pPacketSize = (USBCS & bmHSM ? &highspd_dscr : &fullspd_dscr)
+	+ (9 + 16*alt + 9 + 4);
     altiface = alt;
     if (alt == 0) {
 	// bulk on port 6
@@ -149,22 +149,24 @@ const struct samplerate_info {
     BYTE rate;
     BYTE wait0;
     BYTE wait1;
-    BYTE jump;
-    BYTE jopcode;
+    BYTE opc0;
+    BYTE opc1;
+    BYTE out0;
+    BYTE out1;
     BYTE ifcfg;
 } samplerates[] = {
-    { 48,   1,   1, 9, 3, 0xea },
-    { 30,   1,   1, 9, 3, 0xaa },
-    { 24,   1,   1, 9, 1, 0xca },
-    { 16,   1,   1, 1, 1, 0xca },
-    { 12,   1,   2, 1, 1, 0xca },
-    {  8,   2,   3, 1, 1, 0xca },
-    {  4,   5,   6, 1, 1, 0xca },
-    {  2,  11,  12, 1, 1, 0xca },
-    {  1,  23,  24, 1, 1, 0xca },
-    { 50,  47,  48, 1, 1, 0xca },
-    { 20, 119, 120, 1, 1, 0xca },
-    { 10, 239, 240, 1, 1, 0xca }
+    { 48,0x80,   0, 3, 1, 0x00, 0x00, 0xea },
+    { 30,0x80,   0, 3, 1, 0x00, 0x00, 0xaa },
+    { 24,   1,   0, 2, 1, 0x40, 0x44, 0xca },
+    { 16,   1,   1, 0, 2, 0x44, 0x40, 0xca },
+    { 12,   1,   2, 0, 2, 0x44, 0x40, 0xca },
+    {  8,   2,   3, 0, 2, 0x44, 0x40, 0xca },
+    {  4,   5,   6, 0, 2, 0x44, 0x40, 0xca },
+    {  2,  11,  12, 0, 2, 0x44, 0x40, 0xca },
+    {  1,  23,  24, 0, 2, 0x44, 0x40, 0xca },
+    { 50,  47,  48, 0, 2, 0x44, 0x40, 0xca },
+    { 20, 119, 120, 0, 2, 0x44, 0x40, 0xca },
+    { 10, 239, 240, 0, 2, 0x44, 0x40, 0xca }
 };
 
 BOOL set_samplerate(BYTE rate)
@@ -177,44 +179,50 @@ BOOL set_samplerate(BYTE rate)
     }
 
     IFCONFIG = samplerates[i].ifcfg;
-    GPIFABORT = 0xff;
-    GPIFREADYCFG = 0xc0;
-    GPIFCTLCFG = 0x00;
-    GPIFIDLECS = 0x00;
-    GPIFIDLECTL = 0x0f;
-    GPIFWFSELECT = 0x00;
-    GPIFREADYSTAT = 0x00;
 
     AUTOPTRSETUP = 7;
     AUTOPTRH2 = 0xE4;
     AUTOPTRL2 = 0x00;
 
+    /* The program for low-speed, e.g. 1 MHz, is
+     * wait 23, CTL2=1
+     * wait 24, CTL2=0, FIFO
+     * jump 0, CTL2=0
+     *
+     * The program for 24 MHz is
+     * wait 1, CTL2=0, FIFO
+     * jump 0, CTL2=1
+     *
+     * The program for 30/48 MHz is:
+     * jump 0, CTL2=Z, FIFO, LOOP
+     */
+
     EXTAUTODAT2 = samplerates[i].wait0;
     EXTAUTODAT2 = samplerates[i].wait1;
-    EXTAUTODAT2 = samplerates[i].jump;
+    EXTAUTODAT2 = 1;
     EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
 
-    EXTAUTODAT2 = 0;
-    EXTAUTODAT2 = 2;
-    EXTAUTODAT2 = samplerates[i].jopcode;
+    EXTAUTODAT2 = samplerates[i].opc0;
+    EXTAUTODAT2 = samplerates[i].opc1;
+    EXTAUTODAT2 = 1;
     EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
 
-    EXTAUTODAT2 = 0xff;
-    EXTAUTODAT2 = samplerates[i].jopcode == 3 ? 0xff : 0xfb;
-    EXTAUTODAT2 = 0xff;
-    EXTAUTODAT2 = 0xff;
-    EXTAUTODAT2 = 0xff;
-    EXTAUTODAT2 = 0xff;
-    EXTAUTODAT2 = 0xff;
-    EXTAUTODAT2 = 0xff;
+    EXTAUTODAT2 = samplerates[i].out0;
+    EXTAUTODAT2 = samplerates[i].out1;
+    EXTAUTODAT2 = 0x44;
+    EXTAUTODAT2 = 0x00;
+    EXTAUTODAT2 = 0x00;
+    EXTAUTODAT2 = 0x00;
+    EXTAUTODAT2 = 0x00;
+    EXTAUTODAT2 = 0x00;
 
     EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
@@ -260,7 +268,7 @@ BYTE handle_get_configuration() {
 }
 
 BOOL handle_set_configuration(BYTE cfg) { 
-    //    handle_set_interface(cfg, 0);
+    (void) cfg; // ignore unused parameter
     return TRUE;
 }
 
@@ -310,6 +318,13 @@ void main_init() {
     EP4CFG = 0;
     EP8CFG = 0;
 
+    // in idle mode tristate all outputs
+    GPIFIDLECTL = 0x00;
+    GPIFCTLCFG = 0x80;
+    GPIFWFSELECT = 0x00;
+    GPIFREADYSTAT = 0x00;
+
+    stop_sampling();
     set_voltage(0, 1);
     set_voltage(1, 1);
     set_samplerate(1);
