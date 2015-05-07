@@ -254,17 +254,28 @@ class Oscilloscope(object):
         return True
 
     def start_capture(self, timeout=0):
+        """
+        Tell the device to start capturing samples.
+        :param timeout: (OPTIONAL) A timeout for the transfer. Default: 0 (No timeout)
+        :return: True if successful. May assert or raise various libusb errors if something went wrong.
+        """
         bytes_written = self.device_handle.controlWrite(0x40, self.TRIGGER_REQUEST,
                                                         self.TRIGGER_VALUE, self.TRIGGER_INDEX,
                                                         '\x01', timeout=timeout)
-        assert bytes_written == 1;
+        return bytes_written == 1
 
 
     def stop_capture(self, timeout=0):
+        """
+        Tell the device to stop capturing samples.  This is only supported
+        with the custom firmware.
+        :param timeout: (OPTIONAL) A timeout for the transfer. Default: 0 (No timeout)
+        :return: True if successful. May assert or raise various libusb errors if something went wrong.
+        """
         bytes_written = self.device_handle.controlWrite(0x40, self.TRIGGER_REQUEST,
                                                         self.TRIGGER_VALUE, self.TRIGGER_INDEX,
                                                         '\x00', timeout=timeout)
-        assert bytes_written == 1;
+        return bytes_written == 1
 
 
     def read_data(self, data_size=0x400, raw=False, timeout=0):
@@ -341,17 +352,34 @@ class Oscilloscope(object):
         return fast_read_data
 
     def set_interface(self, alt):
+        """
+        Set the alternative interface (bulk or iso) to use.  This is only
+        supported with the custom firmware.  Iso stands for isochronous usb
+        transfer and this guarantees a bandwidth and therefore make gapless
+        sampling more likely.
+        :param int alt: The interface to use.  Values are
+                           0 <-> Bulk transfer
+                           1 <-> Fastest Iso transfer
+                           2 <-> Slower Iso transfer (needs less usb bandwidth)
+                           3 <-> Even slower Iso transfer
+        :return: True if successful. May assert or raise various libusb errors if something went wrong.
+        """
         if not self.device_handle:
             assert self.open_handle()
-        self.device_handle.setInterfaceAltSetting(0, alt);
-        endpoint_info = self.device[0][0][alt][0];
-        self.is_iso = ((endpoint_info.getAttributes() & 
+        self.device_handle.setInterfaceAltSetting(0, alt)
+        endpoint_info = self.device[0][0][alt][0]
+        self.is_iso = ((endpoint_info.getAttributes() &
                         libusb1.LIBUSB_TRANSFER_TYPE_MASK)
-                       == libusb1.LIBUSB_TRANSFER_TYPE_ISOCHRONOUS);
-        maxpacketsize = endpoint_info.getMaxPacketSize();
-        self.packetsize = ((maxpacketsize >> 11)+1) * (maxpacketsize & 0x7ff);
+                       == libusb1.LIBUSB_TRANSFER_TYPE_ISOCHRONOUS)
+        maxpacketsize = endpoint_info.getMaxPacketSize()
+        self.packetsize = ((maxpacketsize >> 11)+1) * (maxpacketsize & 0x7ff)
+        return True
 
     def read_async_iso(self, callback, packets, outstanding_transfers, raw):
+        """
+        Internal function to read from isochronous channel.  External
+        users should call read_async.
+        """
         array_builder = array.array
         shutdown_event = threading.Event()
         shutdown_is_set = shutdown_event.is_set
@@ -388,6 +416,10 @@ class Oscilloscope(object):
         return shutdown_event
 
     def read_async_bulk(self, callback, packets, outstanding_transfers, raw):
+        """
+        Internal function to read from bulk channel.  External
+        users should call read_async.
+        """
         array_builder = array.array
         shutdown_event = threading.Event()
         shutdown_is_set = shutdown_event.is_set
@@ -424,6 +456,14 @@ class Oscilloscope(object):
         return shutdown_event
 
     def read_async(self, callback, data_size, outstanding_transfers=3, raw=False):
+        """
+        Read both channel's ADC data from the device asynchronously. No trigger support, you need to do this in software.  The function returns immediately but the data is then sent asynchronously to the callback function whenever it receives new samples.
+        :param callback: A function with two arguments that take the samples for the first and second channel.
+        :param data_size: The block size for each sample.  This is automatically rounded up to the nearest multiple of the native block size.
+        :param int outstanding_transfers: (OPTIONAL) The number of transfers sent to the kernel at the same time to improve gapless sampling.  The higher, the more likely it works, but the more resources it will take.
+        :param raw: (OPTIONAL) Wether the samples should be returned as raw string (8-bit data) or as an array of bytes.
+        :return: Returns True if successful (and then calls the callback asynchronously).
+        """
         # data_size to packets
         packets = (data_size + self.packetsize-1)/self.packetsize
         if self.is_iso:
@@ -487,7 +527,7 @@ class Oscilloscope(object):
                            30 <-> 30 MS/s
                            48 <-> 48 MS/s
 
-                           Other values are not supported. 
+                           Other values are not supported.
         :param timeout: (OPTIONAL) An additonal multiplictive factor for changing the probe impedance.
         :return: True if successful. This method may assert or raise various libusb errors if something went wrong.
         """
