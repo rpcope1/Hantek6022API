@@ -297,9 +297,9 @@ class Oscilloscope(object):
         if not self.device_handle:
             assert self.open_handle()
 
-        self.device_handle.start_capture()
+        self.start_capture()
         data = self.device_handle.bulkRead(0x86, data_size, timeout=timeout)
-        self.device_handle.stop_capture()
+        self.stop_capture()
         if self.num_channels == 2:
             chdata = data[::2], data[1::2]
         else:
@@ -325,7 +325,6 @@ class Oscilloscope(object):
         """
         if not self.device_handle:
             assert self.open_handle()
-        scope_control_read = self.device_handle.controlRead
         scope_bulk_read = self.device_handle.bulkRead
         array_builder = array.array
         if self.num_channels == 1 and raw:
@@ -462,7 +461,7 @@ class Oscilloscope(object):
         :param data_size: The block size for each sample.  This is automatically rounded up to the nearest multiple of the native block size.
         :param int outstanding_transfers: (OPTIONAL) The number of transfers sent to the kernel at the same time to improve gapless sampling.  The higher, the more likely it works, but the more resources it will take.
         :param raw: (OPTIONAL) Wether the samples should be returned as raw string (8-bit data) or as an array of bytes.
-        :return: Returns True if successful (and then calls the callback asynchronously).
+        :return: Returns a shutdown event handle if successful (and then calls the callback asynchronously).  Call set() on the returned event to stop sampling.
         """
         # data_size to packets
         packets = (data_size + self.packetsize-1)/self.packetsize
