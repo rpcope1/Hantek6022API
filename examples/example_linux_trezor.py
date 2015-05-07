@@ -13,9 +13,9 @@ from PyHT6022.LibUsbScope import Oscilloscope
 voltagerange = 10       # 1 (5V), 2 (2.6V), 5 or 10
 samplerate = 24         # sample rate in MHz or in 10khz
 numchannels = 1
-numseconds = 2          # number of seconds to sample
+numseconds = 8          # number of seconds to sample
 blocksize = 6*1024      # should be divisible by 6*1024
-alternative = 0         # choose ISO 3072 bytes per 125 us
+alternative = 1         # choose ISO 3072 bytes per 125 us
 
 scope = Oscilloscope()
 scope.setup()
@@ -36,8 +36,6 @@ scope.set_ch1_voltage_range(voltagerange)
 scope.set_sample_rate(samplerate)
 # we divide by 100 because otherwise audacity lets us not zoom into it
 samplerate = samplerate * 1000 * 10
-data = []
-total = 0
 
 print "Reading data from scope! in ",
 for x in range(0, 3):
@@ -46,8 +44,8 @@ for x in range(0, 3):
     time.sleep(1)
 print "now"
 
-data = deque(maxlen=100*1024*1024)
-data_extend = data.extend
+data = []
+data_extend = data.append
 def extend_callback(ch1_data, _):
     data_extend(ch1_data)
 
@@ -63,8 +61,9 @@ shutdown_event.set()
 time.sleep(1)
 scope.stop_capture()
 scope.close_handle()
-rawdata = ''.join(data)
-total = len(rawdata)
+total = 0
+for block in data:
+    total = total + len(block)
 
 filename = "test.wav"
 print "Writing out data from scope to {}".format(filename)
@@ -78,5 +77,6 @@ with open(filename, "wb") as wf:
     wf.write("\x01\x00\x08\x00")
     wf.write("data")
     wf.write(pack("<L", total))
-    wf.write(rawdata)
+    for block in data:
+        wf.write(block)
 print "Done"
