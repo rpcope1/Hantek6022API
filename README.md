@@ -35,9 +35,18 @@ little device. You may wish to first add 60-hantek-6022-usb.rules to your udev r
      sudo udevadm control --reload-rules
  
 After you've done this, the scope should automatically come up with the correct permissions to be accessed without a
-root user. With the device plugged in, run the example_linux_flashfirmware.py example,
+root user.
 
-     python examples/example_linux_flashfirmware.py
+You need to compile the custom firmware.  Install `sdcc` for this.  Then run `make` in the directory `HantekFirmware/custom`:
+
+    git submodule update --init
+    sudo apt-get install sdcc
+    cd PyHT6022/HantekFirmware/custom
+    make
+
+With the device plugged in, run the example_linux_flashfirmware.py example,
+
+    python examples/example_linux_flashfirmware.py
      
 to bootstrap the scope for use. You can then write your own programs, or look at the current channel 1 scope trace via
 
