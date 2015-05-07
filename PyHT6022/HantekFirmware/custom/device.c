@@ -168,21 +168,20 @@ const struct samplerate_info {
     BYTE opc0;
     BYTE opc1;
     BYTE out0;
-    BYTE out1;
     BYTE ifcfg;
 } samplerates[] = {
-    { 48,0x80,   0, 3, 1, 0x00, 0x00, 0xea },
-    { 30,0x80,   0, 3, 1, 0x00, 0x00, 0xaa },
-    { 24,   1,   0, 2, 1, 0x40, 0x44, 0xca },
-    { 16,   1,   1, 0, 2, 0x44, 0x40, 0xca },
-    { 12,   1,   2, 0, 2, 0x44, 0x40, 0xca },
-    {  8,   2,   3, 0, 2, 0x44, 0x40, 0xca },
-    {  4,   5,   6, 0, 2, 0x44, 0x40, 0xca },
-    {  2,  11,  12, 0, 2, 0x44, 0x40, 0xca },
-    {  1,  23,  24, 0, 2, 0x44, 0x40, 0xca },
-    { 50,  47,  48, 0, 2, 0x44, 0x40, 0xca },
-    { 20, 119, 120, 0, 2, 0x44, 0x40, 0xca },
-    { 10, 239, 240, 0, 2, 0x44, 0x40, 0xca }
+    { 48,0x80,   0, 3, 0, 0x00, 0xea },
+    { 30,0x80,   0, 3, 0, 0x00, 0xaa },
+    { 24,   1,   0, 2, 1, 0x40, 0xca },
+    { 16,   1,   1, 2, 0, 0x40, 0xca },
+    { 12,   2,   1, 2, 0, 0x40, 0xca },
+    {  8,   3,   2, 2, 0, 0x40, 0xca },
+    {  4,   6,   5, 2, 0, 0x40, 0xca },
+    {  2,  12,  11, 2, 0, 0x40, 0xca },
+    {  1,  24,  23, 2, 0, 0x40, 0xca },
+    { 50,  48,  47, 2, 0, 0x40, 0xca },
+    { 20, 120, 119, 2, 0, 0x40, 0xca },
+    { 10, 240, 239, 2, 0, 0x40, 0xca }
 };
 
 BOOL set_samplerate(BYTE rate)
@@ -201,9 +200,9 @@ BOOL set_samplerate(BYTE rate)
     AUTOPTRL2 = 0x00;
 
     /* The program for low-speed, e.g. 1 MHz, is
-     * wait 23, CTL2=1
      * wait 24, CTL2=0, FIFO
-     * jump 0, CTL2=0
+     * wait 23, CTL2=1
+     * jump 0, CTL2=1
      *
      * The program for 24 MHz is
      * wait 1, CTL2=0, FIFO
@@ -232,7 +231,7 @@ BOOL set_samplerate(BYTE rate)
     EXTAUTODAT2 = 0;
 
     EXTAUTODAT2 = samplerates[i].out0;
-    EXTAUTODAT2 = samplerates[i].out1;
+    EXTAUTODAT2 = 0x44;
     EXTAUTODAT2 = 0x44;
     EXTAUTODAT2 = 0x00;
     EXTAUTODAT2 = 0x00;
@@ -242,7 +241,7 @@ BOOL set_samplerate(BYTE rate)
 
     EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
-    EXTAUTODAT2 = 0x12;
+    EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
     EXTAUTODAT2 = 0;
