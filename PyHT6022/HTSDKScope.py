@@ -5,7 +5,6 @@ import os
 from struct import pack
 import StringIO
 
-
 # Set the directory for your HantekScope DLL here.
 marchdll_file = os.path.join("HantekSDK", "HTMarch.dll")
 

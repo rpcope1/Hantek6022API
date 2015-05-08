@@ -66,6 +66,8 @@ class Oscilloscope(object):
         self.usb_poller.start()
         self.is_device_firmware_present = False
         self.supports_single_channel = False
+        self.is_iso = False
+        self.packetsize = None
         self.num_channels = 2
         self.scope_id = scope_id
 
@@ -264,7 +266,6 @@ class Oscilloscope(object):
                                                         '\x01', timeout=timeout)
         return bytes_written == 1
 
-
     def stop_capture(self, timeout=0):
         """
         Tell the device to stop capturing samples.  This is only supported
@@ -276,7 +277,6 @@ class Oscilloscope(object):
                                                         self.TRIGGER_VALUE, self.TRIGGER_INDEX,
                                                         '\x00', timeout=timeout)
         return bytes_written == 1
-
 
     def read_data(self, data_size=0x400, raw=False, timeout=0):
         """
@@ -456,12 +456,17 @@ class Oscilloscope(object):
 
     def read_async(self, callback, data_size, outstanding_transfers=3, raw=False):
         """
-        Read both channel's ADC data from the device asynchronously. No trigger support, you need to do this in software.  The function returns immediately but the data is then sent asynchronously to the callback function whenever it receives new samples.
+        Read both channel's ADC data from the device asynchronously. No trigger support, you need to do this in software.
+        The function returns immediately but the data is then sent asynchronously to the callback function whenever it
+        receives new samples.
         :param callback: A function with two arguments that take the samples for the first and second channel.
-        :param data_size: The block size for each sample.  This is automatically rounded up to the nearest multiple of the native block size.
-        :param int outstanding_transfers: (OPTIONAL) The number of transfers sent to the kernel at the same time to improve gapless sampling.  The higher, the more likely it works, but the more resources it will take.
+        :param data_size: The block size for each sample.  This is automatically rounded up to the nearest multiple of
+                          the native block size.
+        :param int outstanding_transfers: (OPTIONAL) The number of transfers sent to the kernel at the same time to
+                improve gapless sampling.  The higher, the more likely it works, but the more resources it will take.
         :param raw: (OPTIONAL) Wether the samples should be returned as raw string (8-bit data) or as an array of bytes.
-        :return: Returns a shutdown event handle if successful (and then calls the callback asynchronously).  Call set() on the returned event to stop sampling.
+        :return: Returns a shutdown event handle if successful (and then calls the callback asynchronously).
+                 Call set() on the returned event to stop sampling.
         """
         # data_size to packets
         packets = (data_size + self.packetsize-1)/self.packetsize
