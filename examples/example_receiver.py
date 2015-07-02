@@ -2,7 +2,7 @@
 ##################################################
 # GNU Radio Python Flow Graph
 # Title: Example Receiver
-# Generated: Thu Jul  2 16:25:16 2015
+# Generated: Thu Jul  2 17:48:12 2015
 ##################################################
 
 if __name__ == '__main__':
@@ -86,19 +86,19 @@ class example_receiver(grc_wxgui.top_block_gui):
         	peak_hold=False,
         )
         self.Add(self.wxgui_fftsink2_0.win)
-        self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(125, (firdes.low_pass_2(1,samp_rate/2,25e3,10e3,15)), variable_slider_0, samp_rate)
+        self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(250, (firdes.low_pass_2(1,samp_rate,25e3,10e3,15)), variable_slider_0, samp_rate)
         self.blocks_float_to_complex_0 = blocks.float_to_complex(1)
         self.blocks_file_source_0 = blocks.file_source(gr.sizeof_char*1, "/tmp/Hantek6022API/test.out", True)
         self.blocks_char_to_float_0 = blocks.char_to_float(1, 100)
         self.audio_sink_0 = audio.sink(16000, "", True)
-        self.analog_const_source_x_0 = analog.sig_source_f(0, analog.GR_CONST_WAVE, 0, 0, 0)
+        self.analog_const_source_x_0 = analog.sig_source_f(0, analog.GR_CONST_WAVE, 0, 0, 1)
         self.analog_am_demod_cf_0_0_0 = analog.am_demod_cf(
-        	channel_rate=32e3,
-        	audio_decim=2,
+        	channel_rate=16e3,
+        	audio_decim=1,
         	audio_pass=5000,
         	audio_stop=7500,
         )
-        self.analog_agc2_xx_0_0_0 = analog.agc2_cc(1, 0.1, 0.8, 1)
+        self.analog_agc2_xx_0_0_0 = analog.agc2_cc(1, 0.1, 1, 1)
         self.analog_agc2_xx_0_0_0.set_max_gain(100)
 
         ##################################################
@@ -119,17 +119,17 @@ class example_receiver(grc_wxgui.top_block_gui):
 
     def set_variable_slider_0(self, variable_slider_0):
         self.variable_slider_0 = variable_slider_0
-        self.freq_xlating_fir_filter_xxx_0.set_center_freq(self.variable_slider_0)
         self._variable_slider_0_slider.set_value(self.variable_slider_0)
         self._variable_slider_0_text_box.set_value(self.variable_slider_0)
+        self.freq_xlating_fir_filter_xxx_0.set_center_freq(self.variable_slider_0)
 
     def get_samp_rate(self):
         return self.samp_rate
 
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
-        self.freq_xlating_fir_filter_xxx_0.set_taps((firdes.low_pass_2(1,self.samp_rate/2,25e3,10e3,15)))
         self.wxgui_fftsink2_0.set_sample_rate(self.samp_rate)
+        self.freq_xlating_fir_filter_xxx_0.set_taps((firdes.low_pass_2(1,self.samp_rate,25e3,10e3,15)))
 
 
 if __name__ == '__main__':

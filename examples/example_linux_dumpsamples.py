@@ -7,7 +7,7 @@ import time
 import atexit
 
 samplerate = 4
-voltage_range = 10
+voltage_range = 2
 numchannels = 1
 blocksize = 6*1024      # should be divisible by 6*1024
 alternative = 1         # choose ISO 3072 bytes per 125 us
@@ -34,7 +34,7 @@ scope.set_sample_rate(samplerate)
 scope.start_capture()
 
 while True:
- scope.read_async(extend_callback, blocksize, outstanding_transfers=10,raw=True)
+ scope.read_async(extend_callback, blocksize, outstanding_transfers=1,raw=True)
  for block in data:
   f.write(block)
 
