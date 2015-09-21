@@ -13,9 +13,9 @@ from PyHT6022.HTSDKScope import Oscilloscope
 scope = Oscilloscope()
 scope_channel = 1
 if not scope.is_attached():
-    print "No scope detected! Check connection!"
+    print("No scope detected! Check connection!")
     sys.exit(1)
-print "Setting up scope!"
+print("Setting up scope!")
 # TODO: Are all these extra calls for setup needed?
 scope.set_voltage_division(100, 200)
 scope.set_voltage_division(1, 6)
@@ -29,14 +29,14 @@ scope.set_dso_calibration(cal_level)
 data = []
 total = 0
 
-print "Reading data from scope!"
+print("Reading data from scope!")
 for x in range(0, 10):
-    print x
+    print(x)
     data.append(scope.read_data_from_scope(1047550, raw_data=True)[scope_channel-1])
     total += len(data[x])
 
 filename = "test.wav"
-print "Writing out data from scope to {}".format(filename)
+print("Writing out data from scope to {}".format(filename))
 with open(filename, "wb") as wf:
     wf.write("RIFF")
     wf.write(pack("<L", 44 + total - 8))
@@ -53,4 +53,4 @@ with open(filename, "wb") as wf:
             raw.write(pack("<B", v&0xff))
     wf.write(raw.getvalue())
     raw.close()
-print "Done"
+print("Done")
