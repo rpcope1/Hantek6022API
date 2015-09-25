@@ -29,7 +29,6 @@ def build_stability_array(data, threshold=1.0):
             continue
     return stability[1:-1]
 
-
 sample_rate_index = 0x1E
 voltage_range = 0x01
 data_points = 3 * 1024
@@ -39,7 +38,7 @@ scope.setup()
 scope.open_handle()
 if (not scope.is_device_firmware_present):
     scope.flash_firmware()
-scope.set_interface(1); # choose ISO
+scope.set_interface(1) # choose ISO
 scope.set_num_channels(1)
 scope.set_sample_rate(sample_rate_index)
 scope.set_ch1_voltage_range(voltage_range)
@@ -50,32 +49,36 @@ data_extend = data.extend
 
 
 def extend_callback(ch1_data, _):
+    global data_extend
     data_extend(ch1_data)
 
 start_time = time.time()
 shutdown_event = scope.read_async(extend_callback, data_points, outstanding_transfers=25)
-print "Clearing FIFO and starting data transfer..."
+print("Clearing FIFO and starting data transfer...")
 i = 0
 scope.start_capture()
 while time.time() - start_time < 1:
     time.sleep(0.01)
 scope.stop_capture()
-print "Stopping new transfers."
+print("Stopping new transfers.")
 shutdown_event.set()
-print "Snooze 1"
+print("Snooze 1")
 time.sleep(1)
-print "Closing handle"
+print("Closing handle")
 scope.close_handle()
-print "Handle closed."
-print "Points in buffer:", len(data)
+print("Handle closed.")
+print("Points in buffer:", len(data))
+scaled_data = scope.scale_read_data(data, voltage_range)
+with open('/tmp/continuous_read.out','wt') as ouf:
+    ouf.write(str(scaled_data[:2^16])[1:-1].replace(', ',chr(10)))
 plt.figure(0)
-plt.plot(scope.scale_read_data(data, voltage_range))
+plt.plot(scaled_data)
 plt.figure(1)
-plt.plot(np.fft.fft(scope.scale_read_data(data, voltage_range)))
-stab = build_stability_array(scope.scale_read_data(data, voltage_range), threshold=1.2)
+plt.plot(np.fft.fft(scaled_data).real)
+#plt.show()
+stab = build_stability_array(scaled_data, threshold=np.average(scaled_data[:2048]))
 stab_avg, stab_std = np.average(stab), np.std(stab)
-print "Stability", stab_avg, "+/-", stab_std, "({}% deviance)".format(100.0*stab_std/stab_avg)
+print("Stability", stab_avg, "+/-", stab_std, "({}% deviance)".format(100.0*stab_std/stab_avg))
 bad_pulse_count = len([p for p in stab if abs(stab_avg - p) >= stab_std])
-print "Pulses more than 1 std dev out: {}/{} ({} %)".format(bad_pulse_count, len(stab), 100.0*bad_pulse_count/len(stab))
-print stab
+print("Pulses more than 1 std dev out: {}/{} ({} %)".format(bad_pulse_count, len(stab), 100.0*bad_pulse_count/len(stab)))
 plt.show()

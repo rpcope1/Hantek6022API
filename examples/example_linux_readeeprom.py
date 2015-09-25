@@ -8,4 +8,4 @@ scope.open_handle()
 eeprom = scope.read_eeprom(0, 256)
 scope.close_handle()
 
-print eeprom.encode('hex')
+print(eeprom.encode('hex'))

@@ -1,13 +1,25 @@
 __author__ = 'Robert Cope', 'Jochen Hoenicke'
 
+import sys
 import time
-import array
 import usb1
-import libusb1
+import array
 import select
+import libusb1
 import threading
 
+isPython3 = '3' == sys.version[0]
+
 from PyHT6022.HantekFirmware import default_firmware, fx2_ihex_to_control_packets
+
+
+def buffer_by_version(a):
+    global isPython3
+    if isinstance(a, int):
+        return bytes((a,)) if isPython3 else str(a)
+    if isinstance(a, str):
+        return a.encode('ascii') if isPython3 else a
+    raise ValueError('unanticipated data type {}'.format(type(n)))
 
 
 class Oscilloscope(object):
@@ -76,11 +88,10 @@ class Oscilloscope(object):
         Attempt to find a suitable scope to run.
         :return: True if a 6022BE scope was found, False otherwise.
         """
-        self.device = self.context.getByVendorIDAndProductID(self.FIRMWARE_PRESENT_VENDOR_ID, self.MODEL_ID,
-                                                             skip_on_error=True, skip_on_access_error=True) or \
-            self.context.getByVendorIDAndProductID(self.NO_FIRMWARE_VENDOR_ID, self.MODEL_ID, skip_on_error=True,
-                                                   skip_on_access_error=True)
-
+        self.device = (self.context.getByVendorIDAndProductID(
+            self.FIRMWARE_PRESENT_VENDOR_ID, self.MODEL_ID,skip_on_error=True, skip_on_access_error=True) or
+            self.context.getByVendorIDAndProductID(
+                self.NO_FIRMWARE_VENDOR_ID, self.MODEL_ID, skip_on_error=True,skip_on_access_error=True))
         if not self.device:
             return False
         self.is_device_firmware_present = self.device.getVendorID() == self.FIRMWARE_PRESENT_VENDOR_ID
@@ -135,15 +146,17 @@ class Oscilloscope(object):
         if not self.device_handle:
             assert self.open_handle()
         for packet in firmware:
+            data = packet.data.encode('ascii') if isinstance(packet.data, str) else packet.data
+            # isinstance(packet.data, str)  and that's bad.
             bytes_written = self.device_handle.controlWrite(0x40, self.RW_FIRMWARE_REQUEST,
                                                             packet.value, self.RW_FIRMWARE_INDEX,
-                                                            packet.data, timeout=timeout)
+                                                            data, timeout=timeout)
             assert bytes_written == packet.size
         # After firmware is written, scope will typically show up again as a different device, so scan again
         self.close_handle(release_interface=False)
         time.sleep(.5)
         while not self.setup():
-            time.sleep(.1)
+            time.sleep(0.1)
         self.supports_single_channel = supports_single_channel
         self.open_handle()
         return self.is_device_firmware_present
@@ -173,11 +186,11 @@ class Oscilloscope(object):
 
         bytes_written = self.device_handle.controlWrite(0x40, self.RW_FIRMWARE_REQUEST,
                                                         0xe600, self.RW_FIRMWARE_INDEX,
-                                                        '\x01', timeout=timeout)
+                                                        buffer_by_version('\x01'), timeout=timeout)
         assert bytes_written == 1
         firmware_chunk_list = []
         # TODO: Fix this for when 8192 isn't divisible by chunk_len
-        for packet in range(0, length/chunk_len):
+        for packet in range(0, length//chunk_len):
             chunk = self.device_handle.controlRead(0x40, self.RW_FIRMWARE_REQUEST,
                                                    address + packet * chunk_len, self.RW_FIRMWARE_INDEX,
                                                    chunk_len, timeout=timeout)
@@ -185,7 +198,7 @@ class Oscilloscope(object):
             assert len(chunk) == chunk_len
         bytes_written = self.device_handle.controlWrite(0x40, self.RW_FIRMWARE_REQUEST,
                                                         0xe600, self.RW_FIRMWARE_INDEX,
-                                                        '\x00', timeout=timeout)
+                                                        buffer_by_version('\x00'), timeout=timeout)
         assert bytes_written == 1
         if not to_ihex:
             return ''.join(firmware_chunk_list)
@@ -263,7 +276,7 @@ class Oscilloscope(object):
         """
         bytes_written = self.device_handle.controlWrite(0x40, self.TRIGGER_REQUEST,
                                                         self.TRIGGER_VALUE, self.TRIGGER_INDEX,
-                                                        '\x01', timeout=timeout)
+                                                        buffer_by_version('\x01'), timeout=timeout)
         return bytes_written == 1
 
     def stop_capture(self, timeout=0):
@@ -275,7 +288,7 @@ class Oscilloscope(object):
         """
         bytes_written = self.device_handle.controlWrite(0x40, self.TRIGGER_REQUEST,
                                                         self.TRIGGER_VALUE, self.TRIGGER_INDEX,
-                                                        '\x00', timeout=timeout)
+                                                        buffer_by_version('\x00'), timeout=timeout)
         return bytes_written == 1
 
     def read_data(self, data_size=0x400, raw=False, timeout=0):
@@ -288,7 +301,7 @@ class Oscilloscope(object):
                  lists are returned (by iterating over the bytestrings and converting to ordinals). The lists contain
                  the ADC value measured at that time, which should be between 0 - 255.
 
-                 If you'd like nicely scaled data, just dump the return lists into the scale_read_data method which
+                 If you'd like nicely scaled data, just dump the return lists into the scale_read_data method with
                  your current voltage range setting.
 
                  This method may assert or raise various libusb errors if something went wrong.
@@ -367,8 +380,7 @@ class Oscilloscope(object):
             assert self.open_handle()
         self.device_handle.setInterfaceAltSetting(0, alt)
         endpoint_info = self.device[0][0][alt][0]
-        self.is_iso = ((endpoint_info.getAttributes() &
-                        libusb1.LIBUSB_TRANSFER_TYPE_MASK)
+        self.is_iso = ((endpoint_info.getAttributes() & libusb1.LIBUSB_TRANSFER_TYPE_MASK)
                        == libusb1.LIBUSB_TRANSFER_TYPE_ISOCHRONOUS)
         maxpacketsize = endpoint_info.getMaxPacketSize()
         self.packetsize = ((maxpacketsize >> 11)+1) * (maxpacketsize & 0x7ff)
@@ -408,7 +420,7 @@ class Oscilloscope(object):
                     iso_transfer.submit()
         else:
             assert False
-        for _ in xrange(outstanding_transfers):
+        for _ in range(outstanding_transfers):
             transfer = self.device_handle.getTransfer(iso_packets=packets)
             transfer.setIsochronous(0x82, (packets*self.packetsize), callback=transfer_callback)
             transfer.submit()
@@ -448,7 +460,7 @@ class Oscilloscope(object):
                     bulk_transfer.submit()
         else:
             assert False
-        for _ in xrange(outstanding_transfers):
+        for _ in range(outstanding_transfers):
             transfer = self.device_handle.getTransfer(iso_packets=packets)
             transfer.setBulk(0x86, (packets*self.packetsize), callback=transfer_callback)
             transfer.submit()
@@ -464,12 +476,12 @@ class Oscilloscope(object):
                           the native block size.
         :param int outstanding_transfers: (OPTIONAL) The number of transfers sent to the kernel at the same time to
                 improve gapless sampling.  The higher, the more likely it works, but the more resources it will take.
-        :param raw: (OPTIONAL) Wether the samples should be returned as raw string (8-bit data) or as an array of bytes.
+        :param raw: (OPTIONAL) Whether the samples should be returned as raw string (8-bit data) or as an array of bytes.
         :return: Returns a shutdown event handle if successful (and then calls the callback asynchronously).
                  Call set() on the returned event to stop sampling.
         """
         # data_size to packets
-        packets = (data_size + self.packetsize-1)/self.packetsize
+        packets = (data_size + self.packetsize-1)//self.packetsize
         if self.is_iso:
             return self.read_async_iso(callback, packets, outstanding_transfers, raw)
         else:
@@ -539,7 +551,7 @@ class Oscilloscope(object):
             assert self.open_handle()
         bytes_written = self.device_handle.controlWrite(0x40, self.SET_SAMPLE_RATE_REQUEST,
                                                         self.SET_SAMPLE_RATE_VALUE, self.SET_SAMPLE_RATE_INDEX,
-                                                        chr(rate_index), timeout=timeout)
+                                                        buffer_by_version(rate_index), timeout=timeout)
         assert bytes_written == 0x01
         return True
 
@@ -552,7 +564,7 @@ class Oscilloscope(object):
         :return: A list of times in seconds from beginning of data collection, and the nice human readable rate label.
         """
         rate_label, rate = self.SAMPLE_RATES.get(rate_index, ("? MS/s", 1.0))
-        return [i/rate for i in xrange(num_points)], rate_label
+        return [i/rate for i in range(num_points)], rate_label
 
     def set_num_channels(self, nchannels, timeout=0):
         """
@@ -568,7 +580,7 @@ class Oscilloscope(object):
                 assert self.open_handle()
             bytes_written = self.device_handle.controlWrite(0x40, self.SET_NUMCH_REQUEST,
                                                             self.SET_NUMCH_VALUE, self.SET_NUMCH_INDEX,
-                                                            chr(nchannels), timeout=timeout)
+                                                            buffer_by_version(nchannels), timeout=timeout)
             assert bytes_written == 0x01
             self.num_channels = nchannels
             return True
@@ -594,7 +606,7 @@ class Oscilloscope(object):
             assert self.open_handle()
         bytes_written = self.device_handle.controlWrite(0x40, self.SET_CH1_VR_REQUEST,
                                                         self.SET_CH1_VR_VALUE, self.SET_CH1_VR_INDEX,
-                                                        chr(range_index), timeout=timeout)
+                                                        buffer_by_version(range_index), timeout=timeout)
         assert bytes_written == 0x01
         return True
 
@@ -617,6 +629,6 @@ class Oscilloscope(object):
             assert self.open_handle()
         bytes_written = self.device_handle.controlWrite(0x40, self.SET_CH2_VR_REQUEST,
                                                         self.SET_CH2_VR_VALUE, self.SET_CH2_VR_INDEX,
-                                                        chr(range_index), timeout=timeout)
+                                                        buffer_by_version(range_index), timeout=timeout)
         assert bytes_written == 0x01
         return True
