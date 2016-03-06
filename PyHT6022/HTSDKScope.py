@@ -74,7 +74,7 @@ class Oscilloscope(object):
         elif retval == 1:
             return True
         else:
-            print "ERROR: Unexpected return value through API."
+            print("ERROR: Unexpected return value through API.")
             return False
 
     def get_voltage_div_dict(self):
@@ -161,7 +161,7 @@ class Oscilloscope(object):
         point_div = scale / scale_points
         out = [0.0 for _ in input_data]
         input_data = [j.value for j in input_data]
-        for j in xrange(0, len(input_data)):
+        for j in range(0, len(input_data)):
             out[j] = input_data[j] * point_div
         return input_data
 
@@ -216,7 +216,7 @@ class Oscilloscope(object):
         if retval == 0:
             return True
         else:
-            print "setupDsoCalLevel retval: ", retval
+            print("setupDsoCalLevel retval: ", retval)
             return False
 
     def calibrate_dso(self):
@@ -229,10 +229,7 @@ class Oscilloscope(object):
         retval = self.marchdll.dsoCalibrate(self.scopeid, self.current_sample_rate_index,
                                             self.current_volt_index[1], self.current_volt_index[2],
                                             byref(self.cal_data))
-        if retval == 0:
-            return True
-        else:
-            return False
+        return not reval
 
     def get_calibration_data(self):
         """
@@ -251,43 +248,39 @@ class Oscilloscope(object):
         else:
             self.cal_data = cal_data
             retval = self.marchdll.dsoSetCalLevel(self.scopeid, byref(self.cal_data), 32)
-            if retval == 0:
-                return True
-            else:
-                return False
-
+            return not reval
 
 # TODO: Make this into real unit tests.
 if __name__ == "__main__":
     scope = Oscilloscope()
-    print "Running Unit tests..."
-    print "Test 1 -> Test Device Attached function."
-    print scope.is_attached(), "<-should be true if a scope is attached."
-    print Oscilloscope(scopeid=1).is_attached(), "<-should be false if 1 or less scopes are attached."
-    print
-    print "Valid Voltage Division settings:", scope.get_voltage_div_dict()
-    print
-    print "Valid Channels", scope.get_channels_dict()
-    print
-    print "Valid Sampling Rate,", scope.get_sample_rate_dict()
-    print
-    print scope.set_voltage_division(100, 200), "<-should return false."
-    print scope.set_voltage_division(1, 6), "<-should return true."
-    print scope.set_sampling_rate(500), "<-should return false."
+    print("Running Unit tests...")
+    print("Test 1 -> Test Device Attached function.")
+    print(scope.is_attached(), "<-should be true if a scope is attached.")
+    print(Oscilloscope(scopeid=1).is_attached(), "<-should be false if 1 or less scopes are attached.")
+    print()
+    print("Valid Voltage Division settings:", scope.get_voltage_div_dict())
+    print()
+    print("Valid Channels", scope.get_channels_dict())
+    print()
+    print("Valid Sampling Rate,", scope.get_sample_rate_dict())
+    print()
+    print(scope.set_voltage_division(100, 200), "<-should return false.")
+    print(scope.set_voltage_division(1, 6), "<-should return true.")
+    print(scope.set_sampling_rate(500), "<-should return false.")
     samplerate = 1000 * 1000
-    print scope.set_sampling_rate(24), "<-should return true."
-    print scope.read_data_from_scope(), "<-should return None."
-    print scope.setup_dso_cal_level(), "<-should return True."
+    print(scope.set_sampling_rate(24), "<-should return true.")
+    print(scope.read_data_from_scope(), "<-should return None.")
+    print(scope.setup_dso_cal_level(), "<-should return True.")
     calLevel = scope.get_calibration_data()
-    print "Loaded calibration level:", [int(i) for i in calLevel]
-    print scope.set_dso_calibration(calLevel), "<-should return True."
-    print "\n------------------\n\tData Tests\t\n------------------\n"
-    print "\tVolt Div == 2.0 V, Sample Rate = 1000 KSa/s\n"
-    print "------------------\n"
+    print("Loaded calibration level:", [int(i) for i in calLevel])
+    print(scope.set_dso_calibration(calLevel), "<-should return True.")
+    print("\n------------------\n\tData Tests\t\n------------------\n")
+    print("\tVolt Div == 2.0 V, Sample Rate = 1000 KSa/s\n")
+    print("------------------\n")
     data = []
     total = 0
     for x in range(0, 10):
-        print x
+        print(x)
         data.append(scope.read_data_from_scope(1047550, raw_data=True)[0])
         total += len(data[x])
 

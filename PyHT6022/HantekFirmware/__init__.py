@@ -21,7 +21,7 @@ def fx2_ihex_to_control_packets(firmware_location):
             addr = int(line[3:7], 16)
             record_type = int(line[7:9], 16)
             raw_data = line[9:-2]
-            record_data = [int(raw_data[i:i+2], 16) for i in xrange(0, len(raw_data), 2)]
+            record_data = [int(raw_data[i:i+2], 16) for i in range(0, len(raw_data), 2)]
             file_checksum = int(line[-2:], 16)
             assert record_len == len(record_data)
             if record_type == 0x00:

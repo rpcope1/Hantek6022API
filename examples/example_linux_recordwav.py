@@ -20,16 +20,15 @@ alternative = 1         # choose ISO 3072 bytes per 125 us
 scope = Oscilloscope()
 scope.setup()
 scope.open_handle()
-scope.flash_firmware()
 if (not scope.is_device_firmware_present):
     scope.flash_firmware()
 else:
     scope.supports_single_channel = True;
-print "Setting up scope!"
+print("Setting up scope!")
 
 scope.set_interface(alternative);
-print "ISO" if scope.is_iso else "BULK", "packet size:", scope.packetsize
-print scope.set_num_channels(numchannels)
+print("ISO" if scope.is_iso else "BULK", "packet size:", scope.packetsize)
+print(scope.set_num_channels(numchannels))
 # set voltage range
 scope.set_ch1_voltage_range(voltagerange)
 # set sample rate
@@ -37,46 +36,46 @@ scope.set_sample_rate(samplerate)
 # we divide by 100 because otherwise audacity lets us not zoom into it
 samplerate = samplerate * 1000 * 10
 
-print "Reading data from scope! in ",
-for x in range(0, 3):
-    print 3-x,"..",
+print("Reading data from scope! in ",)
+for x in range(3):
+    print(3-x,"..",)
     sys.stdout.flush()
     time.sleep(1)
-print "now"
+print("now")
 
 data = []
 data_extend = data.append
 def extend_callback(ch1_data, _):
+    global data_extend
     data_extend(ch1_data)
 
 start_time = time.time()
-print "Clearing FIFO and starting data transfer..."
+print("Clearing FIFO and starting data transfer...")
 shutdown_event = scope.read_async(extend_callback, blocksize, outstanding_transfers=10,raw=True)
 scope.start_capture()
 while time.time() - start_time < numseconds:
     time.sleep(0.01)
-print "Stopping new transfers."
+print("Stopping new transfers.")
 #scope.stop_capture()
 shutdown_event.set()
 time.sleep(1)
 scope.stop_capture()
 scope.close_handle()
-total = 0
-for block in data:
-    total = total + len(block)
+
+total = sum(len(block) for block in data)
 
 filename = "test.wav"
-print "Writing out data from scope to {}".format(filename)
+print("Writing out data from scope to {}".format(filename))
 with open(filename, "wb") as wf:
-    wf.write("RIFF")
-    wf.write(pack("<L", 44 + total - 8))
-    wf.write("WAVE")
-    wf.write("fmt \x10\x00\x00\x00\x01\x00\x01\x00")
-    wf.write(pack("<L", samplerate))
-    wf.write(pack("<L", samplerate))
-    wf.write("\x01\x00\x08\x00")
-    wf.write("data")
-    wf.write(pack("<L", total))
+    wf.write(b"RIFF")
+    wf.write(pack(b"<L", 44 + total - 8))
+    wf.write(b"WAVE")
+    wf.write(b"fmt \x10\x00\x00\x00\x01\x00\x01\x00")
+    wf.write(pack(b"<L", samplerate))
+    wf.write(pack(b"<L", samplerate))
+    wf.write(b"\x01\x00\x08\x00")
+    wf.write(b"data")
+    wf.write(pack(b"<L", total))
     for block in data:
         wf.write(block)
-print "Done"
+print("Done")
