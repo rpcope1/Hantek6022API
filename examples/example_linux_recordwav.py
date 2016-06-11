@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 __author__ = 'Robert Cope', 'Jochen Hoenicke'
 # This code was used to help execute a side-channel attack on the Trezor Bitcoin wallet.
 # See more: http://johoe.mooo.com/trezor-power-analysis/
@@ -28,7 +30,7 @@ print("Setting up scope!")
 
 scope.set_interface(alternative);
 print("ISO" if scope.is_iso else "BULK", "packet size:", scope.packetsize)
-print(scope.set_num_channels(numchannels))
+scope.set_num_channels(numchannels)
 # set voltage range
 scope.set_ch1_voltage_range(voltagerange)
 # set sample rate
@@ -54,7 +56,7 @@ print("Clearing FIFO and starting data transfer...")
 shutdown_event = scope.read_async(extend_callback, blocksize, outstanding_transfers=10,raw=True)
 scope.start_capture()
 while time.time() - start_time < numseconds:
-    time.sleep(0.01)
+    scope.poll()
 print("Stopping new transfers.")
 #scope.stop_capture()
 shutdown_event.set()
@@ -68,14 +70,14 @@ filename = "test.wav"
 print("Writing out data from scope to {}".format(filename))
 with open(filename, "wb") as wf:
     wf.write(b"RIFF")
-    wf.write(pack(b"<L", 44 + total - 8))
+    wf.write(pack("<L", 44 + total - 8))
     wf.write(b"WAVE")
     wf.write(b"fmt \x10\x00\x00\x00\x01\x00\x01\x00")
-    wf.write(pack(b"<L", samplerate))
-    wf.write(pack(b"<L", samplerate))
+    wf.write(pack("<L", samplerate))
+    wf.write(pack("<L", samplerate))
     wf.write(b"\x01\x00\x08\x00")
     wf.write(b"data")
-    wf.write(pack(b"<L", total))
+    wf.write(pack("<L", total))
     for block in data:
         wf.write(block)
 print("Done")

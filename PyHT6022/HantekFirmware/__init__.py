@@ -12,7 +12,7 @@ FirmwareControlPacket = namedtuple('FirmwareControlPacket', ['size', 'value', 'd
 def fx2_ihex_to_control_packets(firmware_location):
     packets = list()
     # disable 8051
-    packets.append(FirmwareControlPacket(1, 0xe600, '\x01'))
+    packets.append(FirmwareControlPacket(1, 0xe600, b'\x01'))
     with open(firmware_location, 'r') as f:
         for line in f.readlines():
             line = line.strip()
@@ -34,7 +34,7 @@ def fx2_ihex_to_control_packets(firmware_location):
             else:
                 raise ValueError('Unknown record type 0x{:2x} encountered!'.format(record_type))
     # enable 8051
-    packets.append(FirmwareControlPacket(1, 0xe600, '\x00'))
+    packets.append(FirmwareControlPacket(1, 0xe600, b'\x00'))
     return packets
 
 base_path = os.path.dirname(os.path.realpath(__file__))

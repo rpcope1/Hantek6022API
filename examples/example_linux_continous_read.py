@@ -58,7 +58,7 @@ print("Clearing FIFO and starting data transfer...")
 i = 0
 scope.start_capture()
 while time.time() - start_time < 1:
-    time.sleep(0.01)
+    scope.poll()
 scope.stop_capture()
 print("Stopping new transfers.")
 shutdown_event.set()
