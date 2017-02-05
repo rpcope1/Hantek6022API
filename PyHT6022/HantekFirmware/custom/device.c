@@ -157,7 +157,7 @@ void select_interface(BYTE alt)
 
 	EP2AUTOINLENL = pPacketSize[0];
 	EP2AUTOINLENH = pPacketSize[1] & 0x7;
-	EP2ISOINPKTS = (pPacketSize[1] >> 3) + 1;
+	EP2ISOINPKTS = 0x80 | (pPacketSize[1] >> 3) + 1;
     }
 }
 
