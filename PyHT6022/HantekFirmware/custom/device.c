@@ -88,7 +88,7 @@ void set_aadj() {
 BOOL set_numchannels(BYTE n)
 {
     if (n == 1 || n == 2) {
-	BYTE fifocfg = 7 + n;
+	BYTE fifocfg = 0x08 + (n - 1);  //AUTO_IN, WORD=numchannels-1
 	EP2FIFOCFG = fifocfg;
 	EP6FIFOCFG = fifocfg;
 	numchannels = n;
@@ -100,13 +100,26 @@ BOOL set_numchannels(BYTE n)
 
 void clear_fifo()
 {
+    BYTE fifocfg = 0x08 + (numchannels - 1);  //AUTO_IN, WORD=numchannels-1
     GPIFABORT = 0xff;
     SYNCDELAY3;
+    while (!(GPIFTRIG & 0x80)) {
+	;
+    }
+    // see section 9.3.13 in EZ-USB trm
     FIFORESET = 0x80;
     SYNCDELAY3;
-    FIFORESET = 0x82;
+    EP2FIFOCFG = 0;
     SYNCDELAY3;
-    FIFORESET = 0x86;
+    EP6FIFOCFG = 0;
+    SYNCDELAY3;
+    FIFORESET = 0x02;
+    SYNCDELAY3;
+    FIFORESET = 0x06;
+    SYNCDELAY3;
+    EP2FIFOCFG = fifocfg;
+    SYNCDELAY3;
+    EP6FIFOCFG = fifocfg;
     SYNCDELAY3;
     FIFORESET = 0;
 }
@@ -124,13 +137,8 @@ void stop_sampling()
 
 void start_sampling()
 {
-    int i;
     clear_fifo();
 
-    for (i = 0; i < 1000; i++);
-    while (!(GPIFTRIG & 0x80)) {
-	;
-    }
     SYNCDELAY3;
     GPIFTCB1 = 0x28;
     SYNCDELAY3;
