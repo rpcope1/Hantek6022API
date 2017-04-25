@@ -1,6 +1,7 @@
 /**
  * Copyright (C) 2009 Ubixum, Inc. 
  * Copyright (C) 2015 Jochen Hoenicke
+ * Copyright (C) 2017 Sebastian Zagrodzki
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -29,6 +30,7 @@
 // change to support as many interfaces as you need
 BYTE altiface = 0; // alt interface
 extern volatile WORD ledcounter;
+volatile BYTE samplerate;
 
 
 
@@ -74,12 +76,23 @@ BOOL set_voltage(BYTE channel, BYTE val)
     return TRUE;
 }
 
+void set_aadj() {
+	BYTE numChan = 1 + (EP2FIFOCFG & 0x01);
+	if (samplerate * numChan == 24) {
+		EP2ISOINPKTS &= 0x7f;
+	} else {
+		// set AADJ bit if the iso transfer rate is less than 24MBps
+		EP2ISOINPKTS |= 0x80;
+	}
+}
+
 BOOL set_numchannels(BYTE numchannels)
 {
     if (numchannels == 1 || numchannels == 2) {
 	BYTE fifocfg = 7 + numchannels;
 	EP2FIFOCFG = fifocfg;
 	EP6FIFOCFG = fifocfg;
+	set_aadj();
 	return TRUE;
     }
     return FALSE;
@@ -157,7 +170,8 @@ void select_interface(BYTE alt)
 
 	EP2AUTOINLENL = pPacketSize[0];
 	EP2AUTOINLENH = pPacketSize[1] & 0x7;
-	EP2ISOINPKTS = 0x80 | (pPacketSize[1] >> 3) + 1;
+	EP2ISOINPKTS = (pPacketSize[1] >> 3) + 1;
+	set_aadj();
     }
 }
 
@@ -192,6 +206,8 @@ BOOL set_samplerate(BYTE rate)
 	if (i == sizeof(samplerates)/sizeof(samplerates[0]))
 	    return FALSE;
     }
+    samplerate = rate;
+    set_aadj();
 
     IFCONFIG = samplerates[i].ifcfg;
 
