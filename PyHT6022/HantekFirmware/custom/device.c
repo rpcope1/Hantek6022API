@@ -177,6 +177,7 @@ void select_interface(BYTE alt)
 
 const struct samplerate_info {
     BYTE rate;
+    BYTE efrate;
     BYTE wait0;
     BYTE wait1;
     BYTE opc0;
@@ -184,18 +185,18 @@ const struct samplerate_info {
     BYTE out0;
     BYTE ifcfg;
 } samplerates[] = {
-    { 48,0x80,   0, 3, 0, 0x00, 0xea },
-    { 30,0x80,   0, 3, 0, 0x00, 0xaa },
-    { 24,   1,   0, 2, 1, 0x40, 0xca },
-    { 16,   1,   1, 2, 0, 0x40, 0xca },
-    { 12,   2,   1, 2, 0, 0x40, 0xca },
-    {  8,   3,   2, 2, 0, 0x40, 0xca },
-    {  4,   6,   5, 2, 0, 0x40, 0xca },
-    {  2,  12,  11, 2, 0, 0x40, 0xca },
-    {  1,  24,  23, 2, 0, 0x40, 0xca },
-    { 50,  48,  47, 2, 0, 0x40, 0xca },
-    { 20, 120, 119, 2, 0, 0x40, 0xca },
-    { 10, 240, 239, 2, 0, 0x40, 0xca }
+    { 48, 48, 0x80,   0,   3, 0, 0x00, 0xea },
+    { 30, 48, 0x80,   0,   3, 0, 0x00, 0xaa },
+    { 24, 24,    1,   0,   2, 1, 0x40, 0xca },
+    { 16, 16,    1,   1,   2, 0, 0x40, 0xca },
+    { 12, 12,    2,   1,   2, 0, 0x40, 0xca },
+    {  8,  8,    3,   2,   2, 0, 0x40, 0xca },
+    {  4,  4,    6,   5,   2, 0, 0x40, 0xca },
+    {  2,  2,    12,  11,  2, 0, 0x40, 0xca },
+    {  1,  1,    24,  23,  2, 0, 0x40, 0xca },
+    { 50,  1,    48,  47,  2, 0, 0x40, 0xca },
+    { 20,  1,    120, 119, 2, 0, 0x40, 0xca },
+    { 10,  1,    240, 239, 2, 0, 0x40, 0xca }
 };
 
 BOOL set_samplerate(BYTE rate)
@@ -206,7 +207,7 @@ BOOL set_samplerate(BYTE rate)
 	if (i == sizeof(samplerates)/sizeof(samplerates[0]))
 	    return FALSE;
     }
-    samplerate = rate;
+    samplerate = samplerates[i].efrate;
     set_aadj();
 
     IFCONFIG = samplerates[i].ifcfg;
