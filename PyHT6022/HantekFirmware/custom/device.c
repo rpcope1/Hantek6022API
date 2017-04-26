@@ -77,7 +77,7 @@ BOOL set_voltage(BYTE channel, BYTE val)
 }
 
 void set_aadj() {
-	if (samplerate * numchannels >= 24000) {
+	if (samplerate >= 24000 / numchannels) {
 		EP2ISOINPKTS &= 0x7f;
 	} else {
 		// set AADJ bit if the iso transfer rate is less than 24MBps
