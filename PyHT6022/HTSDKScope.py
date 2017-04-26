@@ -229,7 +229,7 @@ class Oscilloscope(object):
         retval = self.marchdll.dsoCalibrate(self.scopeid, self.current_sample_rate_index,
                                             self.current_volt_index[1], self.current_volt_index[2],
                                             byref(self.cal_data))
-        return not reval
+        return not retval
 
     def get_calibration_data(self):
         """
@@ -248,7 +248,7 @@ class Oscilloscope(object):
         else:
             self.cal_data = cal_data
             retval = self.marchdll.dsoSetCalLevel(self.scopeid, byref(self.cal_data), 32)
-            return not reval
+            return not retval
 
 # TODO: Make this into real unit tests.
 if __name__ == "__main__":
