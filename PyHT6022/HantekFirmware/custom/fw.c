@@ -59,7 +59,7 @@ void main() {
 
  // init timer2
     RCAP2L = -500 & 0xff;
-    RCAP2H = (-500 >> 8) & 0xff;
+    RCAP2H = (((WORD)-500) >> 8) & 0xff;
     T2CON = 0;
     ET2 = 1;
     TR2 = 1;

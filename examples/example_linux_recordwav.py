@@ -53,8 +53,8 @@ def extend_callback(ch1_data, _):
 
 start_time = time.time()
 print("Clearing FIFO and starting data transfer...")
-shutdown_event = scope.read_async(extend_callback, blocksize, outstanding_transfers=10,raw=True)
 scope.start_capture()
+shutdown_event = scope.read_async(extend_callback, blocksize, outstanding_transfers=10,raw=True)
 while time.time() - start_time < numseconds:
     scope.poll()
 print("Stopping new transfers.")
