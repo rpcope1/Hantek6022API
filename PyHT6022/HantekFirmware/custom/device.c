@@ -1,6 +1,7 @@
 /**
  * Copyright (C) 2009 Ubixum, Inc. 
  * Copyright (C) 2015 Jochen Hoenicke
+ * Copyright (C) 2017 Sebastian Zagrodzki
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -29,7 +30,8 @@
 // change to support as many interfaces as you need
 BYTE altiface = 0; // alt interface
 extern volatile WORD ledcounter;
-
+WORD samplerate;
+BYTE numchannels;
 
 
 /* This sets three bits for each channel, one channel at a time.
@@ -74,12 +76,23 @@ BOOL set_voltage(BYTE channel, BYTE val)
     return TRUE;
 }
 
-BOOL set_numchannels(BYTE numchannels)
+void set_aadj() {
+	if (samplerate * numchannels >= 24000) {
+		EP2ISOINPKTS &= 0x7f;
+	} else {
+		// set AADJ bit if the iso transfer rate is less than 24MBps
+		EP2ISOINPKTS |= 0x80;
+	}
+}
+
+BOOL set_numchannels(BYTE n)
 {
-    if (numchannels == 1 || numchannels == 2) {
-	BYTE fifocfg = 7 + numchannels;
+    if (n == 1 || n == 2) {
+	BYTE fifocfg = 7 + n;
 	EP2FIFOCFG = fifocfg;
 	EP6FIFOCFG = fifocfg;
+	numchannels = n;
+	set_aadj();
 	return TRUE;
     }
     return FALSE;
@@ -158,11 +171,13 @@ void select_interface(BYTE alt)
 	EP2AUTOINLENL = pPacketSize[0];
 	EP2AUTOINLENH = pPacketSize[1] & 0x7;
 	EP2ISOINPKTS = (pPacketSize[1] >> 3) + 1;
+	set_aadj();
     }
 }
 
 const struct samplerate_info {
-    BYTE rate;
+    BYTE rateid;
+    WORD rateksps;
     BYTE wait0;
     BYTE wait1;
     BYTE opc0;
@@ -170,28 +185,30 @@ const struct samplerate_info {
     BYTE out0;
     BYTE ifcfg;
 } samplerates[] = {
-    { 48,0x80,   0, 3, 0, 0x00, 0xea },
-    { 30,0x80,   0, 3, 0, 0x00, 0xaa },
-    { 24,   1,   0, 2, 1, 0x40, 0xca },
-    { 16,   1,   1, 2, 0, 0x40, 0xca },
-    { 12,   2,   1, 2, 0, 0x40, 0xca },
-    {  8,   3,   2, 2, 0, 0x40, 0xca },
-    {  4,   6,   5, 2, 0, 0x40, 0xca },
-    {  2,  12,  11, 2, 0, 0x40, 0xca },
-    {  1,  24,  23, 2, 0, 0x40, 0xca },
-    { 50,  48,  47, 2, 0, 0x40, 0xca },
-    { 20, 120, 119, 2, 0, 0x40, 0xca },
-    { 10, 240, 239, 2, 0, 0x40, 0xca }
+    { 48, 48000, 0x80,   0, 3, 0, 0x00, 0xea },
+    { 30, 30000, 0x80,   0, 3, 0, 0x00, 0xaa },
+    { 24, 24000,    1,   0, 2, 1, 0x40, 0xca },
+    { 16, 16000,    1,   1, 2, 0, 0x40, 0xca },
+    { 12, 12000,    2,   1, 2, 0, 0x40, 0xca },
+    {  8,  8000,    3,   2, 2, 0, 0x40, 0xca },
+    {  4,  4000,    6,   5, 2, 0, 0x40, 0xca },
+    {  2,  2000,   12,  11, 2, 0, 0x40, 0xca },
+    {  1,  1000,   24,  23, 2, 0, 0x40, 0xca },
+    { 50,   500,   48,  47, 2, 0, 0x40, 0xca },
+    { 20,   200,  120, 119, 2, 0, 0x40, 0xca },
+    { 10,   100,  240, 239, 2, 0, 0x40, 0xca }
 };
 
-BOOL set_samplerate(BYTE rate)
+BOOL set_samplerate(BYTE rateid)
 {
     BYTE i = 0;
-    while (samplerates[i].rate != rate) {
+    while (samplerates[i].rateid != rateid) {
 	i++;
 	if (i == sizeof(samplerates)/sizeof(samplerates[0]))
 	    return FALSE;
     }
+    samplerate = samplerates[i].rateksps;
+    set_aadj();
 
     IFCONFIG = samplerates[i].ifcfg;
 
